@@ -1998,8 +1998,8 @@ impl<'r, R: io::Read, D: DeserializeOwned> DeserializeRecordsIter<'r, R, D> {
     }
 }
 
-impl<'r, R: io::Read, D: DeserializeOwned> Iterator
-    for DeserializeRecordsIter<'r, R, D>
+impl<R: io::Read, D: DeserializeOwned> Iterator
+    for DeserializeRecordsIter<'_, R, D>
 {
     type Item = Result<D>;
 
@@ -2077,7 +2077,7 @@ impl<'r, R: io::Read> StringRecordsIter<'r, R> {
     }
 }
 
-impl<'r, R: io::Read> Iterator for StringRecordsIter<'r, R> {
+impl<R: io::Read> Iterator for StringRecordsIter<'_, R> {
     type Item = Result<StringRecord>;
 
     fn next(&mut self) -> Option<Result<StringRecord>> {
@@ -2154,7 +2154,7 @@ impl<'r, R: io::Read> ByteRecordsIter<'r, R> {
     }
 }
 
-impl<'r, R: io::Read> Iterator for ByteRecordsIter<'r, R> {
+impl<R: io::Read> Iterator for ByteRecordsIter<'_, R> {
     type Item = Result<ByteRecord>;
 
     fn next(&mut self) -> Option<Result<ByteRecord>> {

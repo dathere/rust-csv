@@ -27,7 +27,7 @@ struct SeRecord<'w, W: 'w + io::Write> {
     wtr: &'w mut Writer<W>,
 }
 
-impl<'a, 'w, W: io::Write> Serializer for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> Serializer for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
     type SerializeSeq = Self;
@@ -232,7 +232,7 @@ impl<'a, 'w, W: io::Write> Serializer for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeSeq for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeSeq for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -248,7 +248,7 @@ impl<'a, 'w, W: io::Write> SerializeSeq for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTuple for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeTuple for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -264,7 +264,7 @@ impl<'a, 'w, W: io::Write> SerializeTuple for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTupleStruct for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeTupleStruct for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -280,7 +280,7 @@ impl<'a, 'w, W: io::Write> SerializeTupleStruct for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTupleVariant for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeTupleVariant for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -296,7 +296,7 @@ impl<'a, 'w, W: io::Write> SerializeTupleVariant for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeMap for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeMap for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -319,7 +319,7 @@ impl<'a, 'w, W: io::Write> SerializeMap for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeStruct for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeStruct for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -336,7 +336,7 @@ impl<'a, 'w, W: io::Write> SerializeStruct for &'a mut SeRecord<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeStructVariant for &'a mut SeRecord<'w, W> {
+impl<W: io::Write> SerializeStructVariant for &mut SeRecord<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -493,7 +493,7 @@ impl<'w, W: io::Write> SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> Serializer for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> Serializer for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
     type SerializeSeq = Self;
@@ -684,7 +684,7 @@ impl<'a, 'w, W: io::Write> Serializer for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeSeq for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeSeq for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -700,7 +700,7 @@ impl<'a, 'w, W: io::Write> SerializeSeq for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTuple for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeTuple for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -716,7 +716,7 @@ impl<'a, 'w, W: io::Write> SerializeTuple for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTupleStruct for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeTupleStruct for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -732,7 +732,7 @@ impl<'a, 'w, W: io::Write> SerializeTupleStruct for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeTupleVariant for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeTupleVariant for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -748,7 +748,7 @@ impl<'a, 'w, W: io::Write> SerializeTupleVariant for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeMap for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeMap for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -771,7 +771,7 @@ impl<'a, 'w, W: io::Write> SerializeMap for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeStruct for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeStruct for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -801,7 +801,7 @@ impl<'a, 'w, W: io::Write> SerializeStruct for &'a mut SeHeader<'w, W> {
     }
 }
 
-impl<'a, 'w, W: io::Write> SerializeStructVariant for &'a mut SeHeader<'w, W> {
+impl<W: io::Write> SerializeStructVariant for &mut SeHeader<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -1066,9 +1066,9 @@ mod tests {
     #[test]
     fn tuple() {
         let row = (true, 1.5, "hi");
-        let got = serialize(row.clone());
+        let got = serialize(row);
         assert_eq!(got, "true,1.5,hi\n");
-        let (wrote, got) = serialize_header(row.clone());
+        let (wrote, got) = serialize_header(row);
         assert!(!wrote);
         assert_eq!(got, "");
 
