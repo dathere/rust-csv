@@ -563,19 +563,19 @@ pub fn quote(
                 output = &mut moving(output)[o..];
                 nin += i;
                 nout += o;
-                if let WriteResult::OutputFull = res {
+                if res == WriteResult::OutputFull {
                     return (res, nin, nout);
                 }
                 if double_quote {
                     let (res, o) = write_pessimistic(&[quote, quote], output);
-                    if let WriteResult::OutputFull = res {
+                    if res == WriteResult::OutputFull {
                         return (res, nin, nout);
                     }
                     nout += o;
                     output = &mut moving(output)[o..];
                 } else {
                     let (res, o) = write_pessimistic(&[escape, quote], output);
-                    if let WriteResult::OutputFull = res {
+                    if res == WriteResult::OutputFull {
                         return (res, nin, nout);
                     }
                     nout += o;
