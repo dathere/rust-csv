@@ -1232,7 +1232,7 @@ mod tests {
     #[test]
     fn one_record() {
         let mut wtr = WriterBuilder::new().from_writer(vec![]);
-        wtr.write_record(&["a", "b", "c"]).unwrap();
+        wtr.write_record(["a", "b", "c"]).unwrap();
 
         assert_eq!(wtr_as_string(wtr), "a,b,c\n");
     }
@@ -1264,7 +1264,7 @@ mod tests {
     #[test]
     fn one_empty_record() {
         let mut wtr = WriterBuilder::new().from_writer(vec![]);
-        wtr.write_record(&[""]).unwrap();
+        wtr.write_record([""]).unwrap();
 
         assert_eq!(wtr_as_string(wtr), "\"\"\n");
     }
@@ -1280,8 +1280,8 @@ mod tests {
     #[test]
     fn two_empty_records() {
         let mut wtr = WriterBuilder::new().from_writer(vec![]);
-        wtr.write_record(&[""]).unwrap();
-        wtr.write_record(&[""]).unwrap();
+        wtr.write_record([""]).unwrap();
+        wtr.write_record([""]).unwrap();
 
         assert_eq!(wtr_as_string(wtr), "\"\"\n\"\"\n");
     }
@@ -1448,7 +1448,7 @@ mod tests {
     fn comment_char_is_automatically_quoted() {
         let mut wtr =
             WriterBuilder::new().comment(Some(b'#')).from_writer(Vec::new());
-        wtr.write_record(&["# comment", "another"]).unwrap();
+        wtr.write_record(["# comment", "another"]).unwrap();
         let buf = wtr.into_inner().unwrap();
         assert_eq!(String::from_utf8(buf).unwrap(), "\"# comment\",another\n");
     }
