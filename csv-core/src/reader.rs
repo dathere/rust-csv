@@ -454,8 +454,8 @@ const NFA_STATES: &[NfaState] = &[
 
 impl NfaState {
     /// Returns true if this state indicates that a field has been parsed.
-    const fn is_field_final(&self) -> bool {
-        match *self {
+    const fn is_field_final(self) -> bool {
+        match self {
             NfaState::End
             | NfaState::EndRecord
             | NfaState::CRLF
@@ -465,8 +465,8 @@ impl NfaState {
     }
 
     /// Returns true if this state indicates that a record has been parsed.
-    const fn is_record_final(&self) -> bool {
-        match *self {
+    const fn is_record_final(self) -> bool {
+        match self {
             NfaState::End | NfaState::EndRecord | NfaState::CRLF => true,
             _ => false,
         }
@@ -1285,7 +1285,7 @@ impl DfaState {
         DfaState(0)
     }
 
-    const fn is_start(&self) -> bool {
+    const fn is_start(self) -> bool {
         self.0 == 0
     }
 }
