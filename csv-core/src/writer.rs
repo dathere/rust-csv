@@ -44,7 +44,7 @@ impl WriterBuilder {
             wtr.requires_quotes[self.wtr.escape as usize] = true;
         }
         match self.wtr.term {
-            CRLF | Any(b'\n') | Any(b'\r') => {
+            CRLF | Any(b'\n' | b'\r') => {
                 // This is a bit hokey. By default, the record terminator
                 // is '\n', but we still need to quote '\r' (even if our
                 // terminator is only `\n`) because the reader interprets '\r'
