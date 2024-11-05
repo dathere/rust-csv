@@ -391,13 +391,17 @@ impl ByteRecord {
 
             // Find first non-whitespace char
             let mut left = element_start;
-            while left < element_end && self.0.fields[left].is_ascii_whitespace() {
+            while left < element_end
+                && self.0.fields[left].is_ascii_whitespace()
+            {
                 left += 1;
             }
 
             // Find last non-whitespace char
             let mut right = element_end;
-            while right > left && self.0.fields[right - 1].is_ascii_whitespace() {
+            while right > left
+                && self.0.fields[right - 1].is_ascii_whitespace()
+            {
                 right -= 1;
             }
 
