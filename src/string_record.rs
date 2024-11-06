@@ -453,6 +453,28 @@ impl StringRecord {
         *self = trimmed;
     }
 
+    /// Trim the fields of this record so that leading and trailing ASCII whitespace
+    /// is removed.
+    ///
+    /// This method uses the ASCII definition of whitespace. That is, only
+    /// characters in the class `[\t\n\v\f\r ]` are trimmed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use csv::StringRecord;
+    ///
+    /// let mut record = StringRecord::from(vec![
+    ///     "  ", "\tfoo", "bar  ", "b a z",
+    /// ]);
+    /// record.trim_ascii();
+    /// assert_eq!(record, vec!["", "foo", "bar", "b a z"]);
+    /// ```
+    #[inline]
+    pub fn trim_ascii(&mut self) {
+        self.0.trim();
+    }
+
     /// Add a new field to this record.
     ///
     /// # Example
@@ -852,5 +874,85 @@ mod tests {
         let test1 = StringRecord::from(vec!["12", "34", "56"]);
         let test2 = StringRecord::from(vec!["12", "34"]);
         assert_ne!(test1, test2);
+    }
+
+    #[test]
+    fn trim_ascii_middle() {
+        let mut rec = StringRecord::from(vec!["a bc"]);
+        rec.trim_ascii();
+        assert_eq!(rec.get(0), Some("a bc"));
+    }
+
+    #[test]
+    fn trim_ascii_multiple_middles() {
+        let mut rec =
+            StringRecord::from(vec!["a bc d ", " a bc d", " b d dd"]);
+        rec.trim_ascii();
+        assert_eq!(rec.get(0), Some("a bc d"));
+        assert_eq!(rec.get(1), Some("a bc d"));
+        assert_eq!(rec.get(2), Some("b d dd"));
+    }
+
+    #[test]
+    fn trim_ascii_empty() {
+        let mut rec = StringRecord::new();
+        rec.trim_ascii();
+        assert_eq!(rec.len(), 0);
+    }
+
+    #[test]
+    fn trim_ascii_whitespace_only() {
+        let mut rec = StringRecord::from(vec![" \t\n\r\x0c"]);
+        rec.trim_ascii();
+        assert_eq!(rec.get(0), Some(""));
+    }
+
+    #[test]
+    fn trim_ascii_empty_fields() {
+        let mut rec = StringRecord::from(vec![
+            "", "", "  a", "b", "c ", "d  e", " f g", "  h i ", "   ", " ",
+        ]);
+        rec.trim_ascii();
+        assert_eq!(rec.get(0), Some(""));
+        assert_eq!(rec.get(1), Some(""));
+        assert_eq!(rec.get(2), Some("a"));
+        assert_eq!(rec.get(3), Some("b"));
+        assert_eq!(rec.get(4), Some("c"));
+        assert_eq!(rec.get(5), Some("d  e"));
+        assert_eq!(rec.get(6), Some("f g"));
+        assert_eq!(rec.get(7), Some("h i"));
+        assert_eq!(rec.get(8), Some(""));
+        assert_eq!(rec.get(9), Some(""));
+    }
+
+    #[test]
+    fn trim_ascii_vs_unicode_whitespace() {
+        let mut rec = StringRecord::from(vec![
+            "\u{2000}abc\u{2000}", // EN QUAD space
+            "\u{3000}def\u{3000}", // IDEOGRAPHIC SPACE
+            "\u{200A}ghi\u{200A}", // HAIR SPACE
+            "\u{205F}jkl\u{205F}", // MEDIUM MATHEMATICAL SPACE
+            " mno ",               // ASCII space (should be trimmed)
+        ]);
+        rec.trim_ascii();
+        // Unicode whitespace should be preserved
+        assert_eq!(rec.get(0), Some("\u{2000}abc\u{2000}"));
+        assert_eq!(rec.get(1), Some("\u{3000}def\u{3000}"));
+        assert_eq!(rec.get(2), Some("\u{200A}ghi\u{200A}"));
+        assert_eq!(rec.get(3), Some("\u{205F}jkl\u{205F}"));
+        // Only ASCII whitespace should be trimmed
+        assert_eq!(rec.get(4), Some("mno"));
+    }
+
+    #[test]
+    fn trim_ascii_mixed_whitespace() {
+        let mut rec = StringRecord::from(vec![
+            " \u{2000}abc\u{2000} ",   // ASCII + Unicode whitespace
+            "\t\u{3000}def\u{3000}\n", // ASCII + Unicode whitespace
+        ]);
+        rec.trim_ascii();
+        // ASCII whitespace should be trimmed but Unicode whitespace preserved
+        assert_eq!(rec.get(0), Some("\u{2000}abc\u{2000}"));
+        assert_eq!(rec.get(1), Some("\u{3000}def\u{3000}"));
     }
 }
