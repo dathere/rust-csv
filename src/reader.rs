@@ -1607,7 +1607,8 @@ impl<R: io::Read> Reader<R> {
                 }
                 return result;
             }
-        } else if self.state.trim.should_trim_fields() {
+        }
+        if self.state.trim.should_trim_fields() {
             record.trim();
         }
         Ok(ok)
@@ -2309,6 +2310,20 @@ mod tests {
         }
     }
 
+    #[test]
+    fn read_trimmed_records_without_headers() {
+        let data = b("a1, b1\t,\t c1\t\n");
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(false)
+            .trim(Trim::All)
+            .from_reader(data);
+        let mut rec = ByteRecord::new();
+        assert!(rdr.read_byte_record(&mut rec).unwrap());
+        assert_eq!("a1", s(&rec[0]));
+        assert_eq!("b1", s(&rec[1]));
+        assert_eq!("c1", s(&rec[2]));
+    }
+    
     #[test]
     fn read_record_unequal_fails() {
         let data = b("foo\nbar,baz");
