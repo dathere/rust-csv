@@ -12,7 +12,7 @@ license = "Unlicense/MIT"
 categories = ["encoding", "parser-implementations"]
 exclude = ["/.github", "/ci/*", "/scripts/*"]
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.84"
 
 [workspace]
 members = ["csv-core", "csv-index"]
@@ -33,7 +33,7 @@ simdutf8 = "0.1"
 simdutf8 = { version = "0.1", features = ["aarch64_neon"] }
 
 [dev-dependencies]
-bstr = { version = "1.10", default-features = false, features = ["alloc", "serde"] }
+bstr = { version = "1", default-features = false, features = ["alloc", "serde"] }
 serde = { version = "1", features = ["derive"] }
 
 [profile.release]
