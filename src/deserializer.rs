@@ -329,8 +329,8 @@ macro_rules! deserialize_int {
             visitor: V,
         ) -> Result<V::Value, Self::Error> {
             let field = self.next_field()?;
-            let num = if let Some(stripped) = field.strip_prefix("0x") {
-                <$inttype>::from_str_radix(stripped, 16)
+            let num = if let Some(digits) = field.strip_prefix("0x") {
+                <$inttype>::from_str_radix(digits, 16)
             } else {
                 field.parse()
             };

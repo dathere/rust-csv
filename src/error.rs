@@ -43,10 +43,7 @@ impl Error {
     /// `ErrorKind::Io`.
     #[must_use]
     pub const fn is_io_error(&self) -> bool {
-        match *self.0 {
-            ErrorKind::Io(_) => true,
-            _ => false,
-        }
+        matches!(*self.0, ErrorKind::Io(_))
     }
 
     /// Return the position for this error, if one exists.

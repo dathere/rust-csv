@@ -189,11 +189,9 @@ pub struct Writer {
 
 impl Clone for Writer {
     fn clone(&self) -> Writer {
-        let mut requires_quotes = [false; 256];
-        requires_quotes.copy_from_slice(&self.requires_quotes);
         Writer {
             state: self.state.clone(),
-            requires_quotes,
+            requires_quotes: self.requires_quotes,
             delimiter: self.delimiter,
             term: self.term,
             style: self.style,
