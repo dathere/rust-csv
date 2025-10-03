@@ -163,4 +163,3 @@ pub enum QuoteStyle {
     /// This *never* writes quotes, even if it would produce invalid CSV data.
     Never,
 }
-
