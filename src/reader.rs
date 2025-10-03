@@ -40,7 +40,7 @@ pub struct ReaderBuilder {
 impl Default for ReaderBuilder {
     fn default() -> ReaderBuilder {
         ReaderBuilder {
-            capacity: 8 * (1 << 10),
+            capacity: 64 * (1 << 10), // Increased from 8KB to 64KB for better performance
             flexible: false,
             has_headers: true,
             trim: Trim::default(),
@@ -1528,6 +1528,7 @@ impl<R: io::Read> Reader<R> {
     ///     }
     /// }
     /// ```
+    #[inline(always)]
     pub fn read_record(&mut self, record: &mut StringRecord) -> Result<bool> {
         let result = record.read(self);
         // We need to trim again because trimming string records includes
@@ -1576,6 +1577,7 @@ impl<R: io::Read> Reader<R> {
     ///     }
     /// }
     /// ```
+    #[inline(always)]
     pub fn read_byte_record(
         &mut self,
         record: &mut ByteRecord,
@@ -1950,6 +1952,7 @@ impl<R: io::Read, D: DeserializeOwned> Iterator
 {
     type Item = Result<D>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<D>> {
         match self.rdr.read_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2004,6 +2007,7 @@ impl<R: io::Read, D: DeserializeOwned> Iterator
 {
     type Item = Result<D>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<D>> {
         match self.rdr.read_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2043,6 +2047,7 @@ impl<R: io::Read> StringRecordsIntoIter<R> {
 impl<R: io::Read> Iterator for StringRecordsIntoIter<R> {
     type Item = Result<StringRecord>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<StringRecord>> {
         match self.rdr.read_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2081,6 +2086,7 @@ impl<'r, R: io::Read> StringRecordsIter<'r, R> {
 impl<R: io::Read> Iterator for StringRecordsIter<'_, R> {
     type Item = Result<StringRecord>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<StringRecord>> {
         match self.rdr.read_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2120,6 +2126,7 @@ impl<R: io::Read> ByteRecordsIntoIter<R> {
 impl<R: io::Read> Iterator for ByteRecordsIntoIter<R> {
     type Item = Result<ByteRecord>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<ByteRecord>> {
         match self.rdr.read_byte_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2158,6 +2165,7 @@ impl<'r, R: io::Read> ByteRecordsIter<'r, R> {
 impl<R: io::Read> Iterator for ByteRecordsIter<'_, R> {
     type Item = Result<ByteRecord>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Result<ByteRecord>> {
         match self.rdr.read_byte_record(&mut self.rec) {
             Err(err) => Some(Err(err)),
@@ -2323,7 +2331,7 @@ mod tests {
         assert_eq!("b1", s(&rec[1]));
         assert_eq!("c1", s(&rec[2]));
     }
-    
+
     #[test]
     fn read_record_unequal_fails() {
         let data = b("foo\nbar,baz");
