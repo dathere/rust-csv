@@ -2276,7 +2276,10 @@ mod tests {
             ErrorKind::Utf8 { pos: Some(ref pos), ref err } => {
                 assert_eq!(pos, &newpos(0, 1, 0));
                 assert_eq!(err.field(), 1);
+                #[cfg(feature = "simd_utf8_compat")]
                 assert_eq!(err.valid_up_to(), 3);
+                #[cfg(not(feature = "simd_utf8_compat"))]
+                assert_eq!(err.valid_up_to(), 0);
             }
             ref err => panic!("match failed, got {:?}", err),
         }
@@ -2459,7 +2462,10 @@ mod tests {
             ErrorKind::Utf8 { pos: Some(ref pos), ref err } => {
                 assert_eq!(pos, &newpos(0, 1, 0));
                 assert_eq!(err.field(), 1);
+                #[cfg(feature = "simd_utf8_compat")]
                 assert_eq!(err.valid_up_to(), 1);
+                #[cfg(not(feature = "simd_utf8_compat"))]
+                assert_eq!(err.valid_up_to(), 0);
             }
             ref err => panic!("match failed, got {:?}", err),
         }

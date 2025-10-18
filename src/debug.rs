@@ -73,8 +73,8 @@ pub(crate) fn utf8_decode(bytes: &[u8]) -> Option<Result<char, u8>> {
         Some(1) => return Some(Ok(char::from(bytes[0]))),
         Some(len) => len,
     };
-    match core::str::from_utf8(&bytes[..len]) {
-        Ok(s) => Some(Ok(s.chars().next().unwrap())),
-        Err(_) => Some(Err(bytes[0])),
+    if let Ok(s) = simdutf8::basic::from_utf8(&bytes[..len]) {
+        return Some(Ok(s.chars().next().unwrap()));
     }
+    Some(Err(bytes[0]))
 }

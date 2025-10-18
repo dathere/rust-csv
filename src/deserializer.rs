@@ -305,7 +305,7 @@ impl<'r> DeRecord<'r> for DeByteRecord<'r> {
             visitor.visit_i128(n)
         } else if let Some(n) = try_float_bytes(x) {
             visitor.visit_f64(n)
-        } else if let Ok(s) = str::from_utf8(x) {
+        } else if let Ok(s) = simdutf8::basic::from_utf8(x) {
             visitor.visit_str(s)
         } else {
             visitor.visit_bytes(x)
@@ -755,23 +755,23 @@ fn try_float(s: &str) -> Option<f64> {
 }
 
 fn try_positive_integer64_bytes(s: &[u8]) -> Option<u64> {
-    str::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
 }
 
 fn try_negative_integer64_bytes(s: &[u8]) -> Option<i64> {
-    str::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
 }
 
 fn try_positive_integer128_bytes(s: &[u8]) -> Option<u128> {
-    str::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
 }
 
 fn try_negative_integer128_bytes(s: &[u8]) -> Option<i128> {
-    str::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
 }
 
 fn try_float_bytes(s: &[u8]) -> Option<f64> {
-    str::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
 }
 
 #[cfg(test)]

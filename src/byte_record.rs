@@ -539,7 +539,7 @@ impl ByteRecord {
     }
 
     /// Validate the given record as UTF-8.
-    ///
+    /// using simdutf8 compat flavor, which is a drop-in replacement for std::str::from_utf8
     /// If it's not UTF-8, return an error.
     #[inline]
     pub(crate) fn validate(&self) -> result::Result<(), Utf8Error> {
@@ -548,10 +548,20 @@ impl ByteRecord {
             return Ok(());
         }
         // Otherwise, we must check each field individually to ensure that
-        // it's valid UTF-8.
+        // it's valid UTF-8, use simdutf8 compat flavor
+        #[cfg(feature = "simd_utf8_compat")]
         for (i, field) in self.iter().enumerate() {
-            if let Err(err) = std::str::from_utf8(field) {
+            if let Err(err) = simdutf8::compat::from_utf8(field) {
                 return Err(new_utf8_error(i, err.valid_up_to()));
+            }
+        }
+        // use simdutf8 basic flavor, which is faster than the compat flavor
+        // but does not return detailed error information,
+        // so we return 0 for the valid_up_to index
+        #[cfg(not(feature = "simd_utf8_compat"))]
+        for (i, field) in self.iter().enumerate() {
+            if let Err(_) = simdutf8::basic::from_utf8(field) {
+                return Err(new_utf8_error(i, 0));
             }
         }
         Ok(())
@@ -1052,8 +1062,11 @@ mod tests {
         rec.push_field(b"b\xFFar");
 
         let err = StringRecord::from_byte_record(rec).unwrap_err();
-        assert_eq!(err.utf8_error().field(), 1);
+
+        #[cfg(feature = "simd_utf8_compat")]
         assert_eq!(err.utf8_error().valid_up_to(), 1);
+        #[cfg(not(feature = "simd_utf8_compat"))]
+        assert_eq!(err.utf8_error().valid_up_to(), 0);
     }
 
     #[test]
@@ -1073,7 +1086,10 @@ mod tests {
 
         let err = StringRecord::from_byte_record(rec).unwrap_err();
         assert_eq!(err.utf8_error().field(), 0);
+        #[cfg(feature = "simd_utf8_compat")]
         assert_eq!(err.utf8_error().valid_up_to(), 1);
+        #[cfg(not(feature = "simd_utf8_compat"))]
+        assert_eq!(err.utf8_error().valid_up_to(), 0);
     }
 
     #[test]
@@ -1087,7 +1103,10 @@ mod tests {
 
         let err = StringRecord::from_byte_record(rec).unwrap_err();
         assert_eq!(err.utf8_error().field(), 4);
+        #[cfg(feature = "simd_utf8_compat")]
         assert_eq!(err.utf8_error().valid_up_to(), 3);
+        #[cfg(not(feature = "simd_utf8_compat"))]
+        assert_eq!(err.utf8_error().valid_up_to(), 0);
     }
 
     #[test]
@@ -1114,7 +1133,10 @@ mod tests {
 
         let err = StringRecord::from_byte_record(rec).unwrap_err();
         assert_eq!(err.utf8_error().field(), 0);
+        #[cfg(feature = "simd_utf8_compat")]
         assert_eq!(err.utf8_error().valid_up_to(), 1);
+        #[cfg(not(feature = "simd_utf8_compat"))]
+        assert_eq!(err.utf8_error().valid_up_to(), 0);
     }
 
     // This tests that we can always clear a `ByteRecord` and get a guaranteed
