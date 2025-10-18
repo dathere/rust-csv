@@ -25,6 +25,7 @@ csv-core = { path = "csv-core", version = "0.1.11" }
 itoa = "1"
 ryu = "1"
 serde_core = "1.0.221"
+simdutf8 = "0.1"
 
 [dev-dependencies]
 bstr = { version = "1.7.0", default-features = false, features = ["alloc", "serde"] }
@@ -35,3 +36,11 @@ debug = true
 
 [profile.bench]
 debug = true
+
+[features]
+# when enabled, the compat flavor of simdutf8 will be used, which is a little slower
+# but is a drop-in replacement for std::str::from_utf8, returning the position
+# of the erroring field and the underlying error. (up to 16x faster than std::str::fromutf8)
+# Otherwise, the basic flavor of simdutf8 will be used, which is faster but
+# does not provide the position information. (up to 23x faster than std::str::fromutf8)
+simd_utf8_compat = []
