@@ -561,7 +561,9 @@ impl StringRecord {
         // This is safe because we guarantee that each field is valid UTF-8.
         // If each field is valid UTF-8, then the entire buffer (up to the end
         // of the last field) must also be valid UTF-8.
-        unsafe { simdutf8::basic::from_utf8(self.0.as_slice()).unwrap_unchecked() }
+        unsafe {
+            simdutf8::basic::from_utf8(self.0.as_slice()).unwrap_unchecked()
+        }
     }
 
     /// Return a reference to this record's raw

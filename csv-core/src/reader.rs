@@ -1414,7 +1414,8 @@ mod tests {
                 }
                 ReadFieldResult::OutputFull => panic!("field too large"),
                 ReadFieldResult::Field { record_end } => {
-                    let s = simdutf8::basic::from_utf8(&field[..outpos]).unwrap();
+                    let s =
+                        simdutf8::basic::from_utf8(&field[..outpos]).unwrap();
                     row.push(Field::from(s).unwrap());
                     outpos = 0;
                     if record_end {
@@ -1457,7 +1458,8 @@ mod tests {
                 OutputFull => panic!("record too large (out buffer)"),
                 OutputEndsFull => panic!("record too large (end buffer)"),
                 Record => {
-                    let s = simdutf8::basic::from_utf8(&record[..outpos]).unwrap();
+                    let s =
+                        simdutf8::basic::from_utf8(&record[..outpos]).unwrap();
                     let mut start = 0;
                     let mut row = Row::new();
                     for &end in &ends[..endpos] {
