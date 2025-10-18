@@ -26,6 +26,7 @@ libc = ["memchr/libc"]
 
 [dependencies]
 memchr = { version = "2", default-features = false }
+simdutf8 = "0.1"
 
 [dev-dependencies]
 arrayvec = { version = "0.5", default-features = false }
