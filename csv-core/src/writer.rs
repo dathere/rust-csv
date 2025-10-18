@@ -1,5 +1,4 @@
 use core::fmt;
-use core::str;
 
 use memchr::memchr;
 
@@ -504,7 +503,7 @@ impl Default for WriterState {
 
 /// Returns true if and only if the given input is non-numeric.
 pub fn is_non_numeric(input: &[u8]) -> bool {
-    let s = match str::from_utf8(input) {
+    let s = match simdutf8::basic::from_utf8(input) {
         Err(_) => return true,
         Ok(s) => s,
     };
@@ -641,7 +640,7 @@ mod tests {
         s.as_bytes()
     }
     fn s(b: &[u8]) -> &str {
-        ::core::str::from_utf8(b).unwrap()
+        simdutf8::basic::from_utf8(b).unwrap()
     }
 
     macro_rules! assert_field {
