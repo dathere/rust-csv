@@ -982,7 +982,7 @@ impl<W: io::Write> Writer<W> {
             return self.write_record(record);
         }
         let mut first = true;
-        for field in record.iter() {
+        for field in record {
             if !first {
                 self.buf.writable()[0] = self.core.get_delimiter();
                 self.buf.written(1);
