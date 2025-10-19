@@ -1913,10 +1913,10 @@ pub struct DeserializeRecordsIntoIter<R, D> {
 
 impl<R: io::Read, D: DeserializeOwned> DeserializeRecordsIntoIter<R, D> {
     fn new(mut rdr: Reader<R>) -> DeserializeRecordsIntoIter<R, D> {
-        let headers = if !rdr.state.has_headers {
-            None
-        } else {
+        let headers = if rdr.state.has_headers {
             rdr.headers().ok().cloned()
+        } else {
+            None
         };
         DeserializeRecordsIntoIter {
             rdr,
@@ -1971,10 +1971,10 @@ pub struct DeserializeRecordsIter<'r, R: 'r, D> {
 
 impl<'r, R: io::Read, D: DeserializeOwned> DeserializeRecordsIter<'r, R, D> {
     fn new(rdr: &'r mut Reader<R>) -> DeserializeRecordsIter<'r, R, D> {
-        let headers = if !rdr.state.has_headers {
-            None
-        } else {
+        let headers = if rdr.state.has_headers {
             rdr.headers().ok().cloned()
+        } else {
+            None
         };
         DeserializeRecordsIter {
             rdr,
