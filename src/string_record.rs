@@ -200,33 +200,12 @@ impl StringRecord {
         if let Ok(()) = record.validate() {
             return StringRecord(record);
         }
-
-        // Optimized implementation: reduce allocations by checking field validity first
-        let field_count = record.len();
-
-        // Pre-allocate with reasonable capacity
-        // we multiply by 2 to avoid reallocations with lossy conversion
-        let estimated_capacity = record.as_slice().len().saturating_mul(2);
+        // TODO: We can be faster here. Not sure if it's worth it.
         let mut str_record =
-            StringRecord::with_capacity(estimated_capacity, field_count);
-
-        // Process each field with optimized path
-        for field_bytes in &record {
-            // Check if field is already valid UTF-8 to avoid unnecessary String allocation
-            let lossy_str = {
-                if let Ok(valid_str) = simdutf8::basic::from_utf8(field_bytes)
-                {
-                    // Field is already valid UTF-8, reuse as string slice
-                    valid_str
-                } else {
-                    // Invalid UTF-8, convert with lossy replacement
-                    &String::from_utf8_lossy(field_bytes)
-                }
-            };
-
-            str_record.push_field(lossy_str);
+            StringRecord::with_capacity(record.as_slice().len(), record.len());
+        for field in &record {
+            str_record.push_field(&String::from_utf8_lossy(field));
         }
-
         str_record
     }
 
@@ -433,7 +412,7 @@ impl StringRecord {
         self.0.clear();
     }
 
-    /// Trim the fields of this record in-place so that
+    /// Trim the fields of this record in-place so that 
     /// leading and trailing whitespace is removed.
     ///
     /// This method uses the Unicode definition of whitespace.
