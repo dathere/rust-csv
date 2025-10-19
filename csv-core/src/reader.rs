@@ -185,7 +185,10 @@ impl ReaderBuilder {
     /// A record terminator can be any single byte. The default is a special
     /// value, `Terminator::CRLF`, which treats any occurrence of `\r`, `\n`
     /// or `\r\n` as a single record terminator.
-    pub const fn terminator(&mut self, term: Terminator) -> &mut ReaderBuilder {
+    pub const fn terminator(
+        &mut self,
+        term: Terminator,
+    ) -> &mut ReaderBuilder {
         self.rdr.term = term;
         self
     }
@@ -233,7 +236,10 @@ impl ReaderBuilder {
     /// line is ignored by the CSV parser.
     ///
     /// This is disabled by default.
-    pub const fn comment(&mut self, comment: Option<u8>) -> &mut ReaderBuilder {
+    pub const fn comment(
+        &mut self,
+        comment: Option<u8>,
+    ) -> &mut ReaderBuilder {
         self.rdr.comment = comment;
         self
     }
