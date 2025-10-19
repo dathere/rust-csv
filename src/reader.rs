@@ -40,7 +40,7 @@ pub struct ReaderBuilder {
 impl Default for ReaderBuilder {
     fn default() -> ReaderBuilder {
         ReaderBuilder {
-            capacity: 8 * (1 << 10),
+            capacity: 64 * (1 << 10), // 64KB default buffer, increased from 8KB
             flexible: false,
             has_headers: true,
             trim: Trim::default(),
