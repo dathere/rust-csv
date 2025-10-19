@@ -1155,7 +1155,13 @@ impl Dfa {
         (self.trans[idx], self.has_output[idx])
     }
 
-    const fn set(&mut self, from: DfaState, c: u8, to: DfaState, output: bool) {
+    const fn set(
+        &mut self,
+        from: DfaState,
+        c: u8,
+        to: DfaState,
+        output: bool,
+    ) {
         let cls = self.classes.classes[c as usize];
         let idx = from.0 as usize + cls as usize;
         self.trans[idx] = to;

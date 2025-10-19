@@ -204,7 +204,10 @@ pub struct FromUtf8Error {
 
 impl FromUtf8Error {
     /// Create a new FromUtf8Error.
-    pub(crate) const fn new(record: ByteRecord, err: Utf8Error) -> FromUtf8Error {
+    pub(crate) const fn new(
+        record: ByteRecord,
+        err: Utf8Error,
+    ) -> FromUtf8Error {
         FromUtf8Error { record, err }
     }
 

@@ -79,7 +79,10 @@ impl WriterBuilder {
     ///
     /// Note that RFC 4180 specifies that record terminators should be `\r\n`.
     /// To use `\r\n`, use the special `Terminator::CRLF` value.
-    pub const fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
+    pub const fn terminator(
+        &mut self,
+        term: Terminator,
+    ) -> &mut WriterBuilder {
         self.wtr.term = term;
         self
     }
@@ -91,7 +94,10 @@ impl WriterBuilder {
     ///
     /// Note that unless the quote style is set to `Never`, an empty field is
     /// quoted if it is the only field in a record.
-    pub const fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
+    pub const fn quote_style(
+        &mut self,
+        style: QuoteStyle,
+    ) -> &mut WriterBuilder {
         self.wtr.style = style;
         self
     }
@@ -132,7 +138,10 @@ impl WriterBuilder {
     /// be quoted if the comment character is detected anywhere in the field.
     ///
     /// The default value is None.
-    pub const fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
+    pub const fn comment(
+        &mut self,
+        comment: Option<u8>,
+    ) -> &mut WriterBuilder {
         self.wtr.comment = comment;
         self
     }
