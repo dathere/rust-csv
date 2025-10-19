@@ -338,7 +338,7 @@ impl StringRecord {
             // This is safe because we guarantee that all string records
             // have a valid UTF-8 buffer. It's also safe because we
             // individually check each field for valid UTF-8.
-            unsafe { simdutf8::basic::from_utf8(bytes).unwrap_unchecked() }
+            unsafe { str::from_utf8_unchecked(bytes) }
         })
     }
 
@@ -452,7 +452,7 @@ impl StringRecord {
             let field_bytes = &fields[element_start..element_end];
             let field_str = unsafe {
                 // SAFETY: StringRecord guarantees all fields are valid UTF-8
-                simdutf8::basic::from_utf8(field_bytes).unwrap_unchecked()
+                str::from_utf8_unchecked(field_bytes)
             };
 
             // Find first non-whitespace char (Unicode-aware)
@@ -602,7 +602,7 @@ impl StringRecord {
         // If each field is valid UTF-8, then the entire buffer (up to the end
         // of the last field) must also be valid UTF-8.
         unsafe {
-            simdutf8::basic::from_utf8(self.0.as_slice()).unwrap_unchecked()
+            str::from_utf8_unchecked(self.0.as_slice())
         }
     }
 
@@ -763,7 +763,7 @@ impl<'r> Iterator for StringRecordIter<'r> {
         self.0.next().map(|bytes| {
             debug_assert!(simdutf8::basic::from_utf8(bytes).is_ok());
             // See StringRecord::get for safety argument.
-            unsafe { simdutf8::basic::from_utf8(bytes).unwrap_unchecked() }
+            unsafe { str::from_utf8_unchecked(bytes) }
         })
     }
 
@@ -784,7 +784,7 @@ impl<'r> DoubleEndedIterator for StringRecordIter<'r> {
         self.0.next_back().map(|bytes| {
             debug_assert!(simdutf8::basic::from_utf8(bytes).is_ok());
             // See StringRecord::get for safety argument.
-            unsafe { simdutf8::basic::from_utf8(bytes).unwrap_unchecked() }
+            unsafe { str::from_utf8_unchecked(bytes) }
         })
     }
 }
