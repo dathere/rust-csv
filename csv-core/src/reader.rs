@@ -175,7 +175,7 @@ impl ReaderBuilder {
     /// The field delimiter to use when parsing CSV.
     ///
     /// The default is `b','`.
-    pub fn delimiter(&mut self, delimiter: u8) -> &mut ReaderBuilder {
+    pub const fn delimiter(&mut self, delimiter: u8) -> &mut ReaderBuilder {
         self.rdr.delimiter = delimiter;
         self
     }
@@ -185,7 +185,7 @@ impl ReaderBuilder {
     /// A record terminator can be any single byte. The default is a special
     /// value, `Terminator::CRLF`, which treats any occurrence of `\r`, `\n`
     /// or `\r\n` as a single record terminator.
-    pub fn terminator(&mut self, term: Terminator) -> &mut ReaderBuilder {
+    pub const fn terminator(&mut self, term: Terminator) -> &mut ReaderBuilder {
         self.rdr.term = term;
         self
     }
@@ -193,7 +193,7 @@ impl ReaderBuilder {
     /// The quote character to use when parsing CSV.
     ///
     /// The default is `b'"'`.
-    pub fn quote(&mut self, quote: u8) -> &mut ReaderBuilder {
+    pub const fn quote(&mut self, quote: u8) -> &mut ReaderBuilder {
         self.rdr.quote = quote;
         self
     }
@@ -204,7 +204,7 @@ impl ReaderBuilder {
     /// character like `\` (instead of escaping quotes by doubling them).
     ///
     /// By default, recognizing these idiosyncratic escapes is disabled.
-    pub fn escape(&mut self, escape: Option<u8>) -> &mut ReaderBuilder {
+    pub const fn escape(&mut self, escape: Option<u8>) -> &mut ReaderBuilder {
         self.rdr.escape = escape;
         self
     }
@@ -213,7 +213,7 @@ impl ReaderBuilder {
     ///
     /// This is enabled by default, but it may be disabled. When disabled,
     /// doubled quotes are not interpreted as escapes.
-    pub fn double_quote(&mut self, yes: bool) -> &mut ReaderBuilder {
+    pub const fn double_quote(&mut self, yes: bool) -> &mut ReaderBuilder {
         self.rdr.double_quote = yes;
         self
     }
@@ -222,7 +222,7 @@ impl ReaderBuilder {
     ///
     /// This is enabled by default, but it may be disabled. When disabled,
     /// quotes are not treated specially.
-    pub fn quoting(&mut self, yes: bool) -> &mut ReaderBuilder {
+    pub const fn quoting(&mut self, yes: bool) -> &mut ReaderBuilder {
         self.rdr.quoting = yes;
         self
     }
@@ -233,7 +233,7 @@ impl ReaderBuilder {
     /// line is ignored by the CSV parser.
     ///
     /// This is disabled by default.
-    pub fn comment(&mut self, comment: Option<u8>) -> &mut ReaderBuilder {
+    pub const fn comment(&mut self, comment: Option<u8>) -> &mut ReaderBuilder {
         self.rdr.comment = comment;
         self
     }
@@ -243,7 +243,7 @@ impl ReaderBuilder {
     ///
     /// This sets the delimiter and record terminator to the ASCII unit
     /// separator (`\x1F`) and record separator (`\x1E`), respectively.
-    pub fn ascii(&mut self) -> &mut ReaderBuilder {
+    pub const fn ascii(&mut self) -> &mut ReaderBuilder {
         self.delimiter(b'\x1F').terminator(Terminator::Any(b'\x1E'))
     }
 
@@ -252,7 +252,7 @@ impl ReaderBuilder {
     /// This is intended to be a debug option useful for debugging. The NFA
     /// is always slower than the DFA.
     #[doc(hidden)]
-    pub fn nfa(&mut self, yes: bool) -> &mut ReaderBuilder {
+    pub const fn nfa(&mut self, yes: bool) -> &mut ReaderBuilder {
         self.rdr.use_nfa = yes;
         self
     }
@@ -465,7 +465,7 @@ impl NfaState {
     }
 
     /// Returns true if this state indicates that a record has been parsed.
-    fn is_record_final(&self) -> bool {
+    const fn is_record_final(&self) -> bool {
         matches!(*self, NfaState::End | NfaState::EndRecord | NfaState::CRLF)
     }
 }
@@ -491,7 +491,7 @@ impl Reader {
     /// of `\n`.
     ///
     /// Line numbers starts at `1` and are reset when `reset` is called.
-    pub fn line(&self) -> u64 {
+    pub const fn line(&self) -> u64 {
         self.line
     }
 
@@ -499,7 +499,7 @@ impl Reader {
     ///
     /// This is useful after a call to `reset` where the caller knows the
     /// line number from some additional context.
-    pub fn set_line(&mut self, line: u64) {
+    pub const fn set_line(&mut self, line: u64) {
         self.line = line;
     }
 
@@ -954,7 +954,7 @@ impl Reader {
     /// Compute the final NFA transition after all caller-provided input has
     /// been exhausted.
     #[inline(always)]
-    fn transition_final_nfa(&self, state: NfaState) -> NfaState {
+    const fn transition_final_nfa(&self, state: NfaState) -> NfaState {
         use self::NfaState::*;
         match state {
             End | StartRecord | EndRecord | InComment | CRLF => End,
@@ -1143,7 +1143,7 @@ impl Dfa {
         self.new_state(NfaState::EndRecord)
     }
 
-    fn get_output(&self, state: DfaState, c: u8) -> (DfaState, bool) {
+    const fn get_output(&self, state: DfaState, c: u8) -> (DfaState, bool) {
         let cls = self.classes.classes[c as usize];
         let idx = state.0 as usize + cls as usize;
         (self.trans[idx], self.has_output[idx])
