@@ -345,7 +345,7 @@ pub enum ReadRecordResult {
     /// The caller provided output buffer was filled before an entire field
     /// could be written to it.
     OutputFull,
-    /// The caller provided output buffer of field end poisitions was filled
+    /// The caller provided output buffer of field end positions was filled
     /// before the next field could be parsed.
     OutputEndsFull,
     /// The end of a record was found.
@@ -768,7 +768,7 @@ impl Reader {
         // could get away with that, the table would have `10 * 256 = 2560`
         // entries. Even worse, in order to avoid a multiplication instruction
         // when computing the next transition, we store the starting index of
-        // each state's row, which would not be representible in a single byte.
+        // each state's row, which would not be representable in a single byte.
         // So we'd need a `u16`, which doubles our transition table size to
         // ~5KB. This is a lot to put on the stack, even though it probably
         // fits in the L1 cache of most modern CPUs.
@@ -1072,7 +1072,7 @@ impl Reader {
 /// The number of transition classes is determined by an equivalence class of
 /// bytes, where every byte in the same equivalence classes is
 /// indistinguishable from any other byte with respect to the DFA. For example,
-/// if neither `a` nor `b` are specifed as a delimiter/quote/terminator/escape,
+/// if neither `a` nor `b` are specified as a delimiter/quote/terminator/escape,
 /// then the DFA will never discriminate between `a` or `b`, so they can
 /// effectively be treated as identical. This reduces storage space
 /// substantially.

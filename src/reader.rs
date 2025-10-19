@@ -632,7 +632,7 @@ impl ReaderBuilder {
     }
 }
 
-/// A already configured CSV reader.
+/// An already configured CSV reader.
 ///
 /// A CSV reader takes as input CSV data and transforms that into standard Rust
 /// values. The most flexible way to read CSV data is as a sequence of records,
@@ -2254,7 +2254,7 @@ mod tests {
     }
 
     #[test]
-    fn read_trimed_header_invalid_utf8() {
+    fn read_trimmed_header_invalid_utf8() {
         let data = &b"foo,  b\xFFar,\tbaz\na,b,c\nd,e,f"[..];
         let mut rdr = ReaderBuilder::new()
             .has_headers(true)
