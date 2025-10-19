@@ -412,8 +412,8 @@ impl StringRecord {
         self.0.clear();
     }
 
-    /// Trim the fields of this record so that leading and trailing whitespace
-    /// is removed.
+    /// Trim the fields of this record in-place so that 
+    /// leading and trailing whitespace is removed.
     ///
     /// This method uses the Unicode definition of whitespace.
     ///
@@ -433,14 +433,54 @@ impl StringRecord {
         if length == 0 {
             return;
         }
-        // TODO: We could likely do this in place, but for now, we allocate.
-        let mut trimmed =
-            StringRecord::with_capacity(self.as_slice().len(), self.len());
-        trimmed.set_position(self.position().cloned());
-        for field in &*self {
-            trimmed.push_field(field.trim());
+        // Use the public API to access the underlying ByteRecord
+        let (fields, bounds_ends) = self.0.as_parts();
+
+        // Early return if last record ends at 0 -> all empty
+        if bounds_ends[length - 1] == 0 {
+            return;
         }
-        *self = trimmed;
+
+        let mut write_pos = 0;
+        let mut read_start = 0;
+
+        for element_end_idx in &mut bounds_ends[..length] {
+            let element_start = read_start;
+            let element_end = *element_end_idx;
+
+            // Get the field as a string slice for Unicode whitespace trimming
+            let field_bytes = &fields[element_start..element_end];
+            let field_str = unsafe {
+                // SAFETY: StringRecord guarantees all fields are valid UTF-8
+                simdutf8::basic::from_utf8(field_bytes).unwrap_unchecked()
+            };
+
+            // Find first non-whitespace char (Unicode-aware)
+            let trimmed_start = field_str.trim_start();
+            let start_offset =
+                trimmed_start.as_ptr() as usize - field_str.as_ptr() as usize;
+            let left = element_start + start_offset;
+
+            // Find last non-whitespace char (Unicode-aware)
+            let trimmed_end = field_str.trim_end();
+            let right = if trimmed_end.is_empty() {
+                left // If only whitespace, right equals left (empty field)
+            } else {
+                let end_offset = trimmed_end.as_ptr() as usize
+                    - field_str.as_ptr() as usize;
+                element_start + end_offset + trimmed_end.len()
+            };
+
+            // Copy trimmed content if needed
+            let trimmed_len = right - left;
+            if trimmed_len > 0 {
+                fields.copy_within(left..right, write_pos);
+            }
+
+            write_pos += trimmed_len;
+            *element_end_idx = write_pos;
+            read_start = element_end;
+        }
     }
 
     /// Add a new field to this record.
