@@ -161,14 +161,14 @@ impl<'r> DeRecord<'r> for DeStringRecord<'r> {
 
     #[inline]
     fn next_header(&mut self) -> Result<Option<&'r str>, DeserializeError> {
-        Ok(self.headers.as_mut().and_then(|it| it.next()))
+        Ok(self.headers.as_mut().and_then(std::iter::Iterator::next))
     }
 
     #[inline]
     fn next_header_bytes(
         &mut self,
     ) -> Result<Option<&'r [u8]>, DeserializeError> {
-        Ok(self.next_header()?.map(|s| s.as_bytes()))
+        Ok(self.next_header()?.map(str::as_bytes))
     }
 
     #[inline]
@@ -187,7 +187,7 @@ impl<'r> DeRecord<'r> for DeStringRecord<'r> {
 
     #[inline]
     fn next_field_bytes(&mut self) -> Result<&'r [u8], DeserializeError> {
-        self.next_field().map(|s| s.as_bytes())
+        self.next_field().map(str::as_bytes)
     }
 
     #[inline]
@@ -252,7 +252,7 @@ impl<'r> DeRecord<'r> for DeByteRecord<'r> {
     fn next_header_bytes(
         &mut self,
     ) -> Result<Option<&'r [u8]>, DeserializeError> {
-        Ok(self.headers.as_mut().and_then(|it| it.next()))
+        Ok(self.headers.as_mut().and_then(std::iter::Iterator::next))
     }
 
     #[inline]
