@@ -621,10 +621,7 @@ impl<'a, 'de: 'a, T: DeRecord<'de>> MapAccess<'de>
         seed: K,
     ) -> Result<Option<K::Value>, Self::Error> {
         assert!(self.has_headers());
-        let field = match self.next_header_bytes()? {
-            None => return Ok(None),
-            Some(field) => field,
-        };
+        let Some(field) = self.next_header_bytes()? else { return Ok(None) };
         seed.deserialize(BorrowedBytesDeserializer::new(field)).map(Some)
     }
 
