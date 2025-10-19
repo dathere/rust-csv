@@ -412,7 +412,7 @@ impl StringRecord {
         self.0.clear();
     }
 
-    /// Trim the fields of this record in-place so that 
+    /// Trim the fields of this record in-place so that
     /// leading and trailing whitespace is removed.
     ///
     /// This method uses the Unicode definition of whitespace.
@@ -601,9 +601,7 @@ impl StringRecord {
         // This is safe because we guarantee that each field is valid UTF-8.
         // If each field is valid UTF-8, then the entire buffer (up to the end
         // of the last field) must also be valid UTF-8.
-        unsafe {
-            str::from_utf8_unchecked(self.0.as_slice())
-        }
+        unsafe { str::from_utf8_unchecked(self.0.as_slice()) }
     }
 
     /// Return a reference to this record's raw
