@@ -495,10 +495,10 @@ impl<'a, 'de: 'a, T: DeRecord<'de>> Deserializer<'de>
         self,
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        if !self.has_headers() {
-            visitor.visit_seq(self)
-        } else {
+        if self.has_headers() {
             visitor.visit_map(self)
+        } else {
+            visitor.visit_seq(self)
         }
     }
 
@@ -508,10 +508,10 @@ impl<'a, 'de: 'a, T: DeRecord<'de>> Deserializer<'de>
         _fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        if !self.has_headers() {
-            visitor.visit_seq(self)
-        } else {
+        if self.has_headers() {
             visitor.visit_map(self)
+        } else {
+            visitor.visit_seq(self)
         }
     }
 
