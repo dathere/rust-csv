@@ -189,7 +189,7 @@ pub enum QuoteStyle {
 }
 
 impl QuoteStyle {
-    fn to_core(self) -> csv_core::QuoteStyle {
+    const fn to_core(self) -> csv_core::QuoteStyle {
         match self {
             QuoteStyle::Always => csv_core::QuoteStyle::Always,
             QuoteStyle::Necessary => csv_core::QuoteStyle::Necessary,
@@ -215,7 +215,7 @@ pub enum Terminator {
 
 impl Terminator {
     /// Convert this to the csv_core type of the same name.
-    fn to_core(self) -> csv_core::Terminator {
+    const fn to_core(self) -> csv_core::Terminator {
         match self {
             Terminator::CRLF => csv_core::Terminator::CRLF,
             Terminator::Any(b) => csv_core::Terminator::Any(b),

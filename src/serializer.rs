@@ -450,7 +450,7 @@ impl<'w, W: io::Write> SeHeader<'w, W> {
         SeHeader { wtr, state: HeaderState::Write }
     }
 
-    fn wrote_header(&self) -> bool {
+    const fn wrote_header(&self) -> bool {
         use self::HeaderState::*;
         match self.state {
             Write | ErrorIfWrite(_) => false,

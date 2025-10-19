@@ -68,7 +68,7 @@ impl WriterBuilder {
     /// The field delimiter to use when writing CSV.
     ///
     /// The default is `b','`.
-    pub fn delimiter(&mut self, delimiter: u8) -> &mut WriterBuilder {
+    pub const fn delimiter(&mut self, delimiter: u8) -> &mut WriterBuilder {
         self.wtr.delimiter = delimiter;
         self
     }
@@ -79,7 +79,7 @@ impl WriterBuilder {
     ///
     /// Note that RFC 4180 specifies that record terminators should be `\r\n`.
     /// To use `\r\n`, use the special `Terminator::CRLF` value.
-    pub fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
+    pub const fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
         self.wtr.term = term;
         self
     }
@@ -91,7 +91,7 @@ impl WriterBuilder {
     ///
     /// Note that unless the quote style is set to `Never`, an empty field is
     /// quoted if it is the only field in a record.
-    pub fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
+    pub const fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
         self.wtr.style = style;
         self
     }
@@ -99,7 +99,7 @@ impl WriterBuilder {
     /// The quote character to use when writing CSV.
     ///
     /// The default value is `b'"'`.
-    pub fn quote(&mut self, quote: u8) -> &mut WriterBuilder {
+    pub const fn quote(&mut self, quote: u8) -> &mut WriterBuilder {
         self.wtr.quote = quote;
         self
     }
@@ -109,7 +109,7 @@ impl WriterBuilder {
     /// This is only used when `double_quote` is set to `false`.
     ///
     /// The default value is `b'\\'`.
-    pub fn escape(&mut self, escape: u8) -> &mut WriterBuilder {
+    pub const fn escape(&mut self, escape: u8) -> &mut WriterBuilder {
         self.wtr.escape = escape;
         self
     }
@@ -121,7 +121,7 @@ impl WriterBuilder {
     ///
     /// When disabled, quotes are escaped with the escape character (which
     /// is `\\` by default).
-    pub fn double_quote(&mut self, yes: bool) -> &mut WriterBuilder {
+    pub const fn double_quote(&mut self, yes: bool) -> &mut WriterBuilder {
         self.wtr.double_quote = yes;
         self
     }
@@ -132,7 +132,7 @@ impl WriterBuilder {
     /// be quoted if the comment character is detected anywhere in the field.
     ///
     /// The default value is None.
-    pub fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
+    pub const fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
         self.wtr.comment = comment;
         self
     }
@@ -426,7 +426,7 @@ impl Writer {
     /// Note that this does **not** take into account this writer's quoting
     /// style.
     #[inline]
-    pub fn is_special_byte(&self, b: u8) -> bool {
+    pub const fn is_special_byte(&self, b: u8) -> bool {
         self.requires_quotes[b as usize]
     }
 
@@ -444,38 +444,38 @@ impl Writer {
 
     /// Return the delimiter used for this writer.
     #[inline]
-    pub fn get_delimiter(&self) -> u8 {
+    pub const fn get_delimiter(&self) -> u8 {
         self.delimiter
     }
 
     /// Return the terminator used for this writer.
     #[inline]
-    pub fn get_terminator(&self) -> Terminator {
+    pub const fn get_terminator(&self) -> Terminator {
         self.term
     }
 
     /// Return the quoting style used for this writer.
     #[inline]
-    pub fn get_quote_style(&self) -> QuoteStyle {
+    pub const fn get_quote_style(&self) -> QuoteStyle {
         self.style
     }
 
     /// Return the quote character used for this writer.
     #[inline]
-    pub fn get_quote(&self) -> u8 {
+    pub const fn get_quote(&self) -> u8 {
         self.quote
     }
 
     /// Return the escape character used for this writer.
     #[inline]
-    pub fn get_escape(&self) -> u8 {
+    pub const fn get_escape(&self) -> u8 {
         self.escape
     }
 
     /// Return whether this writer doubles quotes or not. When the writer
     /// does not double quotes, it will escape them using the escape character.
     #[inline]
-    pub fn get_double_quote(&self) -> bool {
+    pub const fn get_double_quote(&self) -> bool {
         self.double_quote
     }
 
@@ -626,7 +626,7 @@ fn write_pessimistic(input: &[u8], output: &mut [u8]) -> (WriteResult, usize) {
 
 /// This avoids reborrowing.
 /// See: https://bluss.github.io/rust/fun/2015/10/11/stuff-the-identity-function-does/
-fn moving<T>(x: T) -> T {
+const fn moving<T>(x: T) -> T {
     x
 }
 

@@ -48,7 +48,7 @@ impl<'a> core::fmt::Debug for Bytes<'a> {
 ///
 /// This returns `None` if and only if `bytes` is empty.
 pub(crate) fn utf8_decode(bytes: &[u8]) -> Option<Result<char, u8>> {
-    fn len(byte: u8) -> Option<usize> {
+    const fn len(byte: u8) -> Option<usize> {
         if byte <= 0x7F {
             Some(1)
         } else if byte & 0b1100_0000 == 0b1000_0000 {

@@ -460,7 +460,7 @@ const NFA_STATES: &[NfaState] = &[
 
 impl NfaState {
     /// Returns true if this state indicates that a field has been parsed.
-    fn is_field_final(&self) -> bool {
+    const fn is_field_final(&self) -> bool {
         matches!(
             *self,
             NfaState::End
@@ -485,7 +485,7 @@ impl Reader {
     /// Reset the parser such that it behaves as if it had never been used.
     ///
     /// This may be useful when reading CSV data in a random access pattern.
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.dfa_state = self.dfa.new_state(NfaState::StartRecord);
         self.nfa_state = NfaState::StartRecord;
         self.line = 1;
@@ -1123,7 +1123,7 @@ struct Dfa {
 }
 
 impl Dfa {
-    fn new() -> Dfa {
+    const fn new() -> Dfa {
         Dfa {
             trans: [DfaState(0); TRANS_SIZE],
             has_output: [false; TRANS_SIZE],
@@ -1135,17 +1135,17 @@ impl Dfa {
         }
     }
 
-    fn new_state(&self, nfa_state: NfaState) -> DfaState {
+    const fn new_state(&self, nfa_state: NfaState) -> DfaState {
         let nclasses = self.classes.num_classes() as u8;
         let idx = (nfa_state as u8).checked_mul(nclasses).unwrap();
         DfaState(idx)
     }
 
-    fn new_state_final_end(&self) -> DfaState {
+    const fn new_state_final_end(&self) -> DfaState {
         self.new_state(NfaState::StartRecord)
     }
 
-    fn new_state_final_record(&self) -> DfaState {
+    const fn new_state_final_record(&self) -> DfaState {
         self.new_state(NfaState::EndRecord)
     }
 
@@ -1155,14 +1155,14 @@ impl Dfa {
         (self.trans[idx], self.has_output[idx])
     }
 
-    fn set(&mut self, from: DfaState, c: u8, to: DfaState, output: bool) {
+    const fn set(&mut self, from: DfaState, c: u8, to: DfaState, output: bool) {
         let cls = self.classes.classes[c as usize];
         let idx = from.0 as usize + cls as usize;
         self.trans[idx] = to;
         self.has_output[idx] = output;
     }
 
-    fn finish(&mut self) {
+    const fn finish(&mut self) {
         self.in_field = self.new_state(NfaState::InField);
         self.in_quoted = self.new_state(NfaState::InQuotedField);
         self.final_field = self.new_state(NfaState::EndFieldDelim);
@@ -1224,7 +1224,7 @@ struct DfaClasses {
 }
 
 impl DfaClasses {
-    fn new() -> DfaClasses {
+    const fn new() -> DfaClasses {
         DfaClasses { classes: [0; CLASS_SIZE], next_class: 1 }
     }
 
@@ -1236,7 +1236,7 @@ impl DfaClasses {
         self.next_class += 1;
     }
 
-    fn num_classes(&self) -> usize {
+    const fn num_classes(&self) -> usize {
         self.next_class
     }
 
@@ -1279,11 +1279,11 @@ impl DfaClasses {
 struct DfaState(u8);
 
 impl DfaState {
-    fn start() -> DfaState {
+    const fn start() -> DfaState {
         DfaState(0)
     }
 
-    fn is_start(&self) -> bool {
+    const fn is_start(&self) -> bool {
         self.0 == 0
     }
 }
