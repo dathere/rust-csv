@@ -636,20 +636,17 @@ impl Reader {
             // We insert that here, but we must take care to handle the case
             // where `ends` doesn't have enough space. If it doesn't have
             // enough space, then we also can't transition to the next state.
-            return match res {
-                ReadRecordResult::Record => {
-                    if ends.is_empty() {
-                        return (ReadRecordResult::OutputEndsFull, 0, 0, 0);
-                    }
-                    self.dfa_state = s;
-                    ends[0] = self.output_pos;
-                    self.output_pos = 0;
-                    (res, 0, 0, 1)
+            return if res == ReadRecordResult::Record {
+                if ends.is_empty() {
+                    return (ReadRecordResult::OutputEndsFull, 0, 0, 0);
                 }
-                _ => {
-                    self.dfa_state = s;
-                    (res, 0, 0, 0)
-                }
+                self.dfa_state = s;
+                ends[0] = self.output_pos;
+                self.output_pos = 0;
+                (res, 0, 0, 1)
+            } else {
+                self.dfa_state = s;
+                (res, 0, 0, 0)
             };
         }
         if output.is_empty() {
