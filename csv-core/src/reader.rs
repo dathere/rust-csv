@@ -852,20 +852,17 @@ impl Reader {
         if input.is_empty() {
             let s = self.transition_final_nfa(self.nfa_state);
             let res = ReadRecordResult::from_nfa(s, false, false, false);
-            return match res {
-                ReadRecordResult::Record => {
-                    if ends.is_empty() {
-                        return (ReadRecordResult::OutputEndsFull, 0, 0, 0);
-                    }
-                    self.nfa_state = s;
-                    ends[0] = self.output_pos;
-                    self.output_pos = 0;
-                    (res, 0, 0, 1)
+            return if res == ReadRecordResult::Record {
+                if ends.is_empty() {
+                    return (ReadRecordResult::OutputEndsFull, 0, 0, 0);
                 }
-                _ => {
-                    self.nfa_state = s;
-                    (res, 0, 0, 0)
-                }
+                self.nfa_state = s;
+                ends[0] = self.output_pos;
+                self.output_pos = 0;
+                (res, 0, 0, 1)
+            } else {
+                self.nfa_state = s;
+                (res, 0, 0, 0)
             };
         }
         if output.is_empty() {
