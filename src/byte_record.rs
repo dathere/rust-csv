@@ -347,7 +347,7 @@ impl ByteRecord {
         self.truncate(0);
     }
 
-    /// Trim the fields of this record so that leading and trailing whitespace
+    /// Trim the fields of this record in-place so that leading and trailing whitespace
     /// is removed.
     ///
     /// This method uses the ASCII definition of whitespace. That is, only
@@ -369,14 +369,44 @@ impl ByteRecord {
         if length == 0 {
             return;
         }
-        // TODO: We could likely do this in place, but for now, we allocate.
-        let mut trimmed =
-            ByteRecord::with_capacity(self.as_slice().len(), self.len());
-        trimmed.set_position(self.position().cloned());
-        for field in self.iter() {
-            trimmed.push_field(trim_ascii(field));
+        // early return if last record ends at 0 -> all empty
+        if self.0.bounds.ends[length - 1] == 0 {
+            return;
         }
-        *self = trimmed;
+
+        let mut write_pos = 0;
+        let mut read_start = 0;
+
+        for element_end_idx in &mut self.0.bounds.ends[..length] {
+            let element_start = read_start;
+            let element_end = *element_end_idx;
+
+            // Find first non-whitespace char
+            let mut left = element_start;
+            while left < element_end
+                && self.0.fields[left].is_ascii_whitespace()
+            {
+                left += 1;
+            }
+
+            // Find last non-whitespace char
+            let mut right = element_end;
+            while right > left
+                && self.0.fields[right - 1].is_ascii_whitespace()
+            {
+                right -= 1;
+            }
+
+            // Copy trimmed content if needed
+            let trimmed_len = right - left;
+            if trimmed_len > 0 {
+                self.0.fields.copy_within(left..right, write_pos);
+            }
+
+            write_pos += trimmed_len;
+            *element_end_idx = write_pos;
+            read_start = element_end;
+        }
     }
 
     /// Add a new field to this record.
@@ -865,32 +895,6 @@ impl<'r> DoubleEndedIterator for ByteRecordIter<'r> {
     }
 }
 
-fn trim_ascii(bytes: &[u8]) -> &[u8] {
-    trim_ascii_start(trim_ascii_end(bytes))
-}
-
-fn trim_ascii_start(mut bytes: &[u8]) -> &[u8] {
-    while let [first, rest @ ..] = bytes {
-        if first.is_ascii_whitespace() {
-            bytes = rest;
-        } else {
-            break;
-        }
-    }
-    bytes
-}
-
-fn trim_ascii_end(mut bytes: &[u8]) -> &[u8] {
-    while let [rest @ .., last] = bytes {
-        if last.is_ascii_whitespace() {
-            bytes = rest;
-        } else {
-            break;
-        }
-    }
-    bytes
-}
-
 #[cfg(test)]
 mod tests {
     use crate::string_record::StringRecord;
@@ -899,6 +903,49 @@ mod tests {
 
     fn b(s: &str) -> &[u8] {
         s.as_bytes()
+    }
+
+    #[test]
+    fn trim_middle() {
+        let mut rec = ByteRecord::from(vec![b"a bc"]);
+        rec.trim();
+        assert_eq!(rec.get(0), Some(b("a bc")));
+    }
+
+    #[test]
+    fn trim_multiple_middles() {
+        let mut rec =
+            ByteRecord::from(vec![b"a bc d ", b" a bc d", b" b d dd"]);
+        rec.trim();
+        assert_eq!(rec.get(0), Some(b("a bc d")));
+        assert_eq!(rec.get(1), Some(b("a bc d")));
+        assert_eq!(rec.get(2), Some(b("b d dd")));
+    }
+
+    #[test]
+    fn big_trim() {
+        let mut rec = ByteRecord::from(vec![b"   "]);
+        rec.push_field(b"");
+        rec.push_field(b"  a");
+        rec.push_field(b"b");
+        rec.push_field(b"c ");
+        rec.push_field(b"d  e");
+        rec.push_field(b" f g");
+        rec.push_field(b"  h i ");
+        rec.push_field(b"   ");
+        rec.push_field(b" ");
+
+        rec.trim();
+        assert_eq!(rec.get(0), Some(b("")));
+        assert_eq!(rec.get(1), Some(b("")));
+        assert_eq!(rec.get(2), Some(b("a")));
+        assert_eq!(rec.get(3), Some(b("b")));
+        assert_eq!(rec.get(4), Some(b("c")));
+        assert_eq!(rec.get(5), Some(b("d  e")));
+        assert_eq!(rec.get(6), Some(b("f g")));
+        assert_eq!(rec.get(7), Some(b("h i")));
+        assert_eq!(rec.get(8), Some(b("")));
+        assert_eq!(rec.get(9), Some(b("")));
     }
 
     #[test]
