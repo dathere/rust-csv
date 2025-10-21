@@ -512,14 +512,32 @@ impl Default for WriterState {
 
 /// Returns true if and only if the given input is non-numeric.
 pub fn is_non_numeric(input: &[u8]) -> bool {
-    let s = match simdutf8::basic::from_utf8(input) {
-        Err(_) => return true,
-        Ok(s) => s,
-    };
-    // I suppose this could be faster if we wrote validators of numbers instead
-    // of using the actual parser, but that's probably a lot of work for a bit
-    // of a niche feature.
-    s.parse::<f64>().is_err() && s.parse::<i128>().is_err()
+    if input.is_empty() {
+        return true;
+    }
+
+    let mut has_digit = false;
+    let mut has_dot = false;
+
+    for (i, &b) in input.iter().enumerate() {
+        match b {
+            b'0'..=b'9' => has_digit = true,
+            b'.' => {
+                if has_dot {
+                    return true; // Multiple dots
+                }
+                has_dot = true;
+            }
+            b'+' | b'-' => {
+                if i != 0 {
+                    return true; // Sign not at start
+                }
+            }
+            _ => return true, // Invalid character
+        }
+    }
+
+    !has_digit // Non-numeric if no digits found
 }
 
 /// Escape quotes `input` and writes the result to `output`.
