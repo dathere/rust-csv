@@ -511,6 +511,7 @@ impl Default for WriterState {
 }
 
 /// Returns true if and only if the given input is non-numeric.
+#[inline(always)]
 pub fn is_non_numeric(input: &[u8]) -> bool {
     if input.is_empty() {
         return true;
