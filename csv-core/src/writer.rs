@@ -517,10 +517,26 @@ pub fn is_non_numeric(input: &[u8]) -> bool {
         return true;
     }
 
-    let mut has_digit = false;
+    // Fast path: check first byte - most common early exit
+    let first = input[0];
+    match first {
+        b'0'..=b'9' => {
+            // Likely numeric, continue checking
+        }
+        b'+' | b'-' => {
+            // Sign at start is ok if followed by digits
+            if input.len() == 1 {
+                return true; // Just a sign, non-numeric
+            }
+        }
+        _ => return true, // First byte is non-numeric
+    }
+
+    let mut has_digit = first >= b'0' && first <= b'9';
     let mut has_dot = false;
 
-    for (i, &b) in input.iter().enumerate() {
+    // Start from index 1 since we already checked first byte
+    for &b in &input[1..] {
         match b {
             b'0'..=b'9' => has_digit = true,
             b'.' => {
@@ -529,12 +545,8 @@ pub fn is_non_numeric(input: &[u8]) -> bool {
                 }
                 has_dot = true;
             }
-            b'+' | b'-' => {
-                if i != 0 {
-                    return true; // Sign not at start
-                }
-            }
-            _ => return true, // Invalid character
+            b'+' | b'-' => return true, // Sign not at start
+            _ => return true,           // Invalid character
         }
     }
 
