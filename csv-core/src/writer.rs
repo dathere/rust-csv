@@ -517,40 +517,11 @@ pub fn is_non_numeric(input: &[u8]) -> bool {
         return true;
     }
 
-    // Fast path: check first byte - most common early exit
-    let first = input[0];
-    match first {
-        b'0'..=b'9' => {
-            // Likely numeric, continue checking
-        }
-        b'+' | b'-' => {
-            // Sign at start is ok if followed by digits
-            if input.len() == 1 {
-                return true; // Just a sign, non-numeric
-            }
-        }
-        _ => return true, // First byte is non-numeric
-    }
-
-    let mut has_digit = first >= b'0' && first <= b'9';
-    let mut has_dot = false;
-
-    // Start from index 1 since we already checked first byte
-    for &b in &input[1..] {
-        match b {
-            b'0'..=b'9' => has_digit = true,
-            b'.' => {
-                if has_dot {
-                    return true; // Multiple dots
-                }
-                has_dot = true;
-            }
-            b'+' | b'-' => return true, // Sign not at start
-            _ => return true,           // Invalid character
-        }
-    }
-
-    !has_digit // Non-numeric if no digits found
+    let Ok(s) = simdutf8::basic::from_utf8(input) else { return true };
+    // I suppose this could be faster if we wrote validators of numbers instead
+    // of using the actual parser, but that's probably a lot of work for a bit
+    // of a niche feature.
+    s.parse::<f64>().is_err() && s.parse::<i128>().is_err()
 }
 
 /// Escape quotes `input` and writes the result to `output`.
