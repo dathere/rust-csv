@@ -1149,12 +1149,14 @@ impl Dfa {
         self.new_state(NfaState::EndRecord)
     }
 
+    #[inline(always)]
     const fn get_output(&self, state: DfaState, c: u8) -> (DfaState, bool) {
         let cls = self.classes.classes[c as usize];
         let idx = state.0 as usize + cls as usize;
         (self.trans[idx], self.has_output[idx])
     }
 
+    #[inline]
     const fn set(
         &mut self,
         from: DfaState,
@@ -1168,6 +1170,7 @@ impl Dfa {
         self.has_output[idx] = output;
     }
 
+    #[inline]
     const fn finish(&mut self) {
         self.in_field = self.new_state(NfaState::InField);
         self.in_quoted = self.new_state(NfaState::InQuotedField);
@@ -1175,6 +1178,7 @@ impl Dfa {
         self.final_record = self.new_state(NfaState::EndRecord);
     }
 
+    #[inline]
     fn new_read_field_result(
         &self,
         state: DfaState,
@@ -1198,6 +1202,7 @@ impl Dfa {
         }
     }
 
+    #[inline]
     fn new_read_record_result(
         &self,
         state: DfaState,
@@ -1285,10 +1290,12 @@ impl DfaClasses {
 struct DfaState(u8);
 
 impl DfaState {
+    #[inline(always)]
     const fn start() -> DfaState {
         DfaState(0)
     }
 
+    #[inline(always)]
     const fn is_start(&self) -> bool {
         self.0 == 0
     }
