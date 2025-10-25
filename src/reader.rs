@@ -1654,11 +1654,9 @@ impl<R: io::Read> Reader<R> {
                 InputEmpty => continue,
                 OutputFull => {
                     record.expand_fields();
-                    continue;
                 }
                 OutputEndsFull => {
                     record.expand_ends();
-                    continue;
                 }
                 Record => {
                     record.set_len(endlen);
