@@ -383,7 +383,7 @@ pub fn serialize_header<S: Serialize, W: io::Write>(
     value: S,
 ) -> Result<bool, Error> {
     let mut ser = SeHeader::new(wtr);
-    value.serialize(&mut ser).map(|_| ser.wrote_header())
+    value.serialize(&mut ser).map(|()| ser.wrote_header())
 }
 
 /// State machine for `SeHeader`.
