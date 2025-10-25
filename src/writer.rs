@@ -882,7 +882,7 @@ impl<W: io::Write> Writer<W> {
                 self.state.header = HeaderState::DidWrite;
             } else {
                 self.state.header = HeaderState::DidNotWrite;
-            };
+            }
         }
         serialize(self, &record)?;
         self.write_terminator()?;
@@ -920,7 +920,7 @@ impl<W: io::Write> Writer<W> {
         I: IntoIterator<Item = T>,
         T: AsRef<[u8]>,
     {
-        for field in record.into_iter() {
+        for field in record {
             self.write_field_impl(field)?;
         }
         self.write_terminator()
