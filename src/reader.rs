@@ -616,7 +616,10 @@ impl ReaderBuilder {
 
     /// Set the capacity (in bytes) of the buffer used in the CSV reader.
     /// This defaults to a reasonable setting.
-    pub const fn buffer_capacity(&mut self, capacity: usize) -> &mut ReaderBuilder {
+    pub const fn buffer_capacity(
+        &mut self,
+        capacity: usize,
+    ) -> &mut ReaderBuilder {
         self.capacity = capacity;
         self
     }

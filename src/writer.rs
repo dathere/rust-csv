@@ -318,7 +318,10 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub const fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
+    pub const fn terminator(
+        &mut self,
+        term: Terminator,
+    ) -> &mut WriterBuilder {
         self.builder.terminator(term.to_core());
         self
     }
@@ -375,7 +378,10 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub const fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
+    pub const fn quote_style(
+        &mut self,
+        style: QuoteStyle,
+    ) -> &mut WriterBuilder {
         self.builder.quote_style(style.to_core());
         self
     }
@@ -493,14 +499,20 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub const fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
+    pub const fn comment(
+        &mut self,
+        comment: Option<u8>,
+    ) -> &mut WriterBuilder {
         self.builder.comment(comment);
         self
     }
 
     /// Set the capacity (in bytes) of the internal buffer used in the CSV
     /// writer. This defaults to a reasonable setting.
-    pub const fn buffer_capacity(&mut self, capacity: usize) -> &mut WriterBuilder {
+    pub const fn buffer_capacity(
+        &mut self,
+        capacity: usize,
+    ) -> &mut WriterBuilder {
         self.capacity = capacity;
         self
     }
