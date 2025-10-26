@@ -446,7 +446,7 @@ struct SeHeader<'w, W: 'w + io::Write> {
 }
 
 impl<'w, W: io::Write> SeHeader<'w, W> {
-    fn new(wtr: &'w mut Writer<W>) -> Self {
+    const fn new(wtr: &'w mut Writer<W>) -> Self {
         SeHeader { wtr, state: HeaderState::Write }
     }
 

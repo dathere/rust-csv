@@ -224,7 +224,7 @@ impl ReaderBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn has_headers(&mut self, yes: bool) -> &mut ReaderBuilder {
+    pub const fn has_headers(&mut self, yes: bool) -> &mut ReaderBuilder {
         self.has_headers = yes;
         self
     }
@@ -306,7 +306,7 @@ impl ReaderBuilder {
     ///     }
     /// }
     /// ```
-    pub fn flexible(&mut self, yes: bool) -> &mut ReaderBuilder {
+    pub const fn flexible(&mut self, yes: bool) -> &mut ReaderBuilder {
         self.flexible = yes;
         self
     }
@@ -357,7 +357,7 @@ impl ReaderBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn trim(&mut self, trim: Trim) -> &mut ReaderBuilder {
+    pub const fn trim(&mut self, trim: Trim) -> &mut ReaderBuilder {
         self.trim = trim;
         self
     }
@@ -616,7 +616,7 @@ impl ReaderBuilder {
 
     /// Set the capacity (in bytes) of the buffer used in the CSV reader.
     /// This defaults to a reasonable setting.
-    pub fn buffer_capacity(&mut self, capacity: usize) -> &mut ReaderBuilder {
+    pub const fn buffer_capacity(&mut self, capacity: usize) -> &mut ReaderBuilder {
         self.capacity = capacity;
         self
     }
@@ -1930,7 +1930,7 @@ impl<R: io::Read, D: DeserializeOwned> DeserializeRecordsIntoIter<R, D> {
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         &mut self.rdr
     }
 
@@ -1983,12 +1983,12 @@ impl<'r, R: io::Read, D: DeserializeOwned> DeserializeRecordsIter<'r, R, D> {
     }
 
     /// Return a reference to the underlying CSV reader.
-    pub fn reader(&self) -> &Reader<R> {
+    pub const fn reader(&self) -> &Reader<R> {
         self.rdr
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         self.rdr
     }
 }
@@ -2024,7 +2024,7 @@ impl<R: io::Read> StringRecordsIntoIter<R> {
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         &mut self.rdr
     }
 
@@ -2061,12 +2061,12 @@ impl<'r, R: io::Read> StringRecordsIter<'r, R> {
     }
 
     /// Return a reference to the underlying CSV reader.
-    pub fn reader(&self) -> &Reader<R> {
+    pub const fn reader(&self) -> &Reader<R> {
         self.rdr
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         self.rdr
     }
 }
@@ -2100,7 +2100,7 @@ impl<R: io::Read> ByteRecordsIntoIter<R> {
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         &mut self.rdr
     }
 
@@ -2137,12 +2137,12 @@ impl<'r, R: io::Read> ByteRecordsIter<'r, R> {
     }
 
     /// Return a reference to the underlying CSV reader.
-    pub fn reader(&self) -> &Reader<R> {
+    pub const fn reader(&self) -> &Reader<R> {
         self.rdr
     }
 
     /// Return a mutable reference to the underlying CSV reader.
-    pub fn reader_mut(&mut self) -> &mut Reader<R> {
+    pub const fn reader_mut(&mut self) -> &mut Reader<R> {
         self.rdr
     }
 }

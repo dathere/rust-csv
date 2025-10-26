@@ -659,7 +659,7 @@ impl Position {
 
     /// Set the byte offset of this position.
     #[inline]
-    pub fn set_byte(&mut self, byte: u64) -> &mut Position {
+    pub const fn set_byte(&mut self, byte: u64) -> &mut Position {
         self.byte = byte;
         self
     }
@@ -676,7 +676,7 @@ impl Position {
 
     /// Set the record index of this position.
     #[inline]
-    pub fn set_record(&mut self, record: u64) -> &mut Position {
+    pub const fn set_record(&mut self, record: u64) -> &mut Position {
         self.record = record;
         self
     }

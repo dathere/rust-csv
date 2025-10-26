@@ -140,7 +140,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn delimiter(&mut self, delimiter: u8) -> &mut WriterBuilder {
+    pub const fn delimiter(&mut self, delimiter: u8) -> &mut WriterBuilder {
         self.builder.delimiter(delimiter);
         self
     }
@@ -227,7 +227,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn has_headers(&mut self, yes: bool) -> &mut WriterBuilder {
+    pub const fn has_headers(&mut self, yes: bool) -> &mut WriterBuilder {
         self.has_headers = yes;
         self
     }
@@ -285,7 +285,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn flexible(&mut self, yes: bool) -> &mut WriterBuilder {
+    pub const fn flexible(&mut self, yes: bool) -> &mut WriterBuilder {
         self.flexible = yes;
         self
     }
@@ -318,7 +318,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
+    pub const fn terminator(&mut self, term: Terminator) -> &mut WriterBuilder {
         self.builder.terminator(term.to_core());
         self
     }
@@ -375,7 +375,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
+    pub const fn quote_style(&mut self, style: QuoteStyle) -> &mut WriterBuilder {
         self.builder.quote_style(style.to_core());
         self
     }
@@ -403,7 +403,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn quote(&mut self, quote: u8) -> &mut WriterBuilder {
+    pub const fn quote(&mut self, quote: u8) -> &mut WriterBuilder {
         self.builder.quote(quote);
         self
     }
@@ -432,7 +432,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn double_quote(&mut self, yes: bool) -> &mut WriterBuilder {
+    pub const fn double_quote(&mut self, yes: bool) -> &mut WriterBuilder {
         self.builder.double_quote(yes);
         self
     }
@@ -465,7 +465,7 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn escape(&mut self, escape: u8) -> &mut WriterBuilder {
+    pub const fn escape(&mut self, escape: u8) -> &mut WriterBuilder {
         self.builder.escape(escape);
         self
     }
@@ -493,14 +493,14 @@ impl WriterBuilder {
     ///     Ok(())
     /// }
     /// ```
-    pub fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
+    pub const fn comment(&mut self, comment: Option<u8>) -> &mut WriterBuilder {
         self.builder.comment(comment);
         self
     }
 
     /// Set the capacity (in bytes) of the internal buffer used in the CSV
     /// writer. This defaults to a reasonable setting.
-    pub fn buffer_capacity(&mut self, capacity: usize) -> &mut WriterBuilder {
+    pub const fn buffer_capacity(&mut self, capacity: usize) -> &mut WriterBuilder {
         self.capacity = capacity;
         self
     }
@@ -1097,7 +1097,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Return a reference to the underlying writer.
-    pub fn get_ref(&self) -> &W {
+    pub const fn get_ref(&self) -> &W {
         self.wtr.as_ref().unwrap()
     }
 
@@ -1201,13 +1201,13 @@ impl Buffer {
 
     /// Indicates that `n` bytes have been written to this buffer.
     #[inline]
-    fn written(&mut self, n: usize) {
+    const fn written(&mut self, n: usize) {
         self.len += n;
     }
 
     /// Clear the buffer.
     #[inline]
-    fn clear(&mut self) {
+    const fn clear(&mut self) {
         self.len = 0;
     }
 }
