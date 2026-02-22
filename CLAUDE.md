@@ -50,7 +50,7 @@ Key source files in `src/`:
 
 ## CI Checks
 
-CI tests across: pinned MSRV (1.73.0 in CI, 1.93 in Cargo.toml), stable, beta, nightly, macOS, Windows (MSVC + GNU). Additional jobs:
+CI tests across: pinned MSRV (1.93), stable, beta, nightly, macOS, Windows (MSVC + GNU). Additional jobs:
 - `cargo fmt --all --check`
 - `ci/check-copy cookbook` and `ci/check-copy tutorial` — verifies example files in `examples/` are in sync with `src/tutorial.rs` and `src/cookbook.rs`
 - Miri with `-Zmiri-strict-provenance`
