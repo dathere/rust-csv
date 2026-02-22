@@ -1271,6 +1271,7 @@ impl DfaClasses {
             }
             i += 1;
         }
+        assert!(self.special_count < TRANS_CLASSES, "too many special bytes");
         self.special_bytes[self.special_count] = b;
         self.special_count += 1;
     }
@@ -1306,7 +1307,15 @@ impl DfaClasses {
         // Use memchr to find the first special byte via
         // SIMD. For typical configs this is 4 bytes
         // (delimiter, quote, \r, \n) handled with two
-        // memchr calls.
+        // memchr calls. We support at most 6 special bytes
+        // (two memchr3 calls). If more are ever added,
+        // this must be updated.
+        debug_assert!(
+            self.special_count <= 6,
+            "scan_and_copy supports at most 6 special bytes, \
+             got {}",
+            self.special_count
+        );
         let end = match self.special_count {
             0 => max_copy,
             1 => {

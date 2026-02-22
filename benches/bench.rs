@@ -265,7 +265,7 @@ macro_rules! bench_dataset {
             g.bench_function("deserialize_borrowed_bytes", |b| {
                 b.iter(|| {
                     let mut rdr = ReaderBuilder::new()
-                        .has_headers(true)
+                        .has_headers($sh)
                         .from_reader(data);
                     let mut count = 0u64;
                     let mut rec = ByteRecord::new();
@@ -280,7 +280,7 @@ macro_rules! bench_dataset {
             g.bench_function("deserialize_borrowed_str", |b| {
                 b.iter(|| {
                     let mut rdr = ReaderBuilder::new()
-                        .has_headers(true)
+                        .has_headers($sh)
                         .from_reader(data);
                     let mut count = 0u64;
                     let mut rec = StringRecord::new();
