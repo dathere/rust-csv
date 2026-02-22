@@ -606,7 +606,9 @@ impl ByteRecord {
         let mut it_record = self.iter();
         let mut it_other = other.into_iter();
         loop {
-            match (it_record.next(), it_other.next()) {
+            let x = it_record.next();
+            let y = it_other.next();
+            match (x, y) {
                 (None, None) => return true,
                 (None, Some(_)) | (Some(_), None) => return false,
                 (Some(x), Some(y)) => {
