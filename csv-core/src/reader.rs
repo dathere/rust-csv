@@ -1,5 +1,7 @@
 use core::fmt;
 
+use memchr::{memchr, memchr2, memchr3};
+
 use crate::Terminator;
 
 // BE ADVISED
@@ -735,6 +737,11 @@ impl Reader {
             if state >= self.dfa.final_field {
                 break;
             }
+            if state == self.dfa.in_field || state == self.dfa.in_quoted {
+                self.dfa
+                    .classes
+                    .scan_and_copy(input, &mut nin, output, &mut nout);
+            }
         }
         let res = self.dfa.new_read_field_result(
             state,
@@ -1232,11 +1239,22 @@ impl Dfa {
 struct DfaClasses {
     classes: [u8; CLASS_SIZE],
     next_class: usize,
+    /// The distinct bytes assigned to non-zero equivalence
+    /// classes (i.e., special bytes like delimiter, quote,
+    /// terminator). Used for SIMD-accelerated scanning via
+    /// memchr.
+    special_bytes: [u8; TRANS_CLASSES],
+    special_count: usize,
 }
 
 impl DfaClasses {
     const fn new() -> DfaClasses {
-        DfaClasses { classes: [0; CLASS_SIZE], next_class: 1 }
+        DfaClasses {
+            classes: [0; CLASS_SIZE],
+            next_class: 1,
+            special_bytes: [0; TRANS_CLASSES],
+            special_count: 0,
+        }
     }
 
     fn add(&mut self, b: u8) {
@@ -1245,22 +1263,31 @@ impl DfaClasses {
         }
         self.classes[b as usize] = self.next_class as u8;
         self.next_class += 1;
+        // Track unique special bytes for memchr scanning.
+        let mut i = 0;
+        while i < self.special_count {
+            if self.special_bytes[i] == b {
+                return;
+            }
+            i += 1;
+        }
+        self.special_bytes[self.special_count] = b;
+        self.special_count += 1;
     }
 
     const fn num_classes(&self) -> usize {
         self.next_class
     }
 
-    /// Scan and copy the input bytes to the output buffer quickly.
+    /// Scan and copy input bytes to the output buffer using
+    /// SIMD-accelerated memchr to find the next special byte,
+    /// then bulk-copy via `copy_from_slice`.
     ///
-    /// This assumes that the current state of the DFA is either `InField` or
-    /// `InQuotedField`. In this case, all bytes corresponding to the first
-    /// equivalence class (i.e., not a delimiter/quote/escape/etc.) are
-    /// guaranteed to never result in a state transition out of the current
-    /// state. This function takes advantage of that copies every byte from
-    /// `input` in the first equivalence class to `output`. Once a byte is seen
-    /// outside the first equivalence class, we quit and should fall back to
-    /// the main DFA loop.
+    /// This assumes the current DFA state is `InField` or
+    /// `InQuotedField`. All bytes in equivalence class 0
+    /// (not a delimiter/quote/escape/etc.) are guaranteed to
+    /// never cause a state transition, so we can safely skip
+    /// them in bulk.
     #[inline(always)]
     fn scan_and_copy(
         &self,
@@ -1269,13 +1296,58 @@ impl DfaClasses {
         output: &mut [u8],
         nout: &mut usize,
     ) {
-        while *nin < input.len()
-            && *nout < output.len()
-            && self.classes[input[*nin] as usize] == 0
-        {
-            output[*nout] = input[*nin];
-            *nin += 1;
-            *nout += 1;
+        let in_left = input.len() - *nin;
+        let out_left = output.len() - *nout;
+        let max_copy = if in_left < out_left { in_left } else { out_left };
+        if max_copy == 0 {
+            return;
+        }
+        let scan = &input[*nin..*nin + max_copy];
+        // Use memchr to find the first special byte via
+        // SIMD. For typical configs this is 4 bytes
+        // (delimiter, quote, \r, \n) handled with two
+        // memchr calls.
+        let end = match self.special_count {
+            0 => max_copy,
+            1 => {
+                let s = self.special_bytes;
+                memchr(s[0], scan).unwrap_or(max_copy)
+            }
+            2 => {
+                let s = self.special_bytes;
+                memchr2(s[0], s[1], scan).unwrap_or(max_copy)
+            }
+            3 => {
+                let s = self.special_bytes;
+                memchr3(s[0], s[1], s[2], scan).unwrap_or(max_copy)
+            }
+            _ => {
+                let s = self.special_bytes;
+                let a = memchr3(s[0], s[1], s[2], scan);
+                let b = match self.special_count {
+                    4 => memchr(s[3], scan),
+                    5 => memchr2(s[3], s[4], scan),
+                    _ => memchr3(s[3], s[4], s[5], scan),
+                };
+                match (a, b) {
+                    (Some(x), Some(y)) => {
+                        if x < y {
+                            x
+                        } else {
+                            y
+                        }
+                    }
+                    (Some(x), None) => x,
+                    (None, Some(y)) => y,
+                    (None, None) => max_copy,
+                }
+            }
+        };
+        if end > 0 {
+            output[*nout..*nout + end]
+                .copy_from_slice(&input[*nin..*nin + end]);
+            *nin += end;
+            *nout += end;
         }
     }
 }
@@ -1329,6 +1401,8 @@ impl Clone for DfaClasses {
     fn clone(&self) -> DfaClasses {
         let mut x = DfaClasses::new();
         x.classes.copy_from_slice(&self.classes);
+        x.special_bytes = self.special_bytes;
+        x.special_count = self.special_count;
         x
     }
 }

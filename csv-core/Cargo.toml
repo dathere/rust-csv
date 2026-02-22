@@ -30,3 +30,8 @@ simdutf8 = "0.1"
 
 [dev-dependencies]
 arrayvec = { version = "0.5", default-features = false }
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "bench"
+harness = false

@@ -1,58 +1,69 @@
-#![feature(test)]
-
-extern crate test;
-
-use test::Bencher;
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 
 use csv_core::{Reader, ReaderBuilder};
 
-static NFL: &'static str = include_str!("../../examples/data/bench/nfl.csv");
-static GAME: &'static str = include_str!("../../examples/data/bench/game.csv");
-static POP: &'static str =
+static NFL: &str = include_str!("../../examples/data/bench/nfl.csv");
+static GAME: &str = include_str!("../../examples/data/bench/game.csv");
+static POP: &str =
     include_str!("../../examples/data/bench/worldcitiespop.csv");
-static MBTA: &'static str =
+static MBTA: &str =
     include_str!("../../examples/data/bench/gtfs-mbta-stop-times.csv");
 
-macro_rules! bench {
-    ($name:ident, $data:ident, $counter:ident, $result:expr) => {
-        bench!($name, $data, $counter, $result, false);
-    };
-    ($name:ident, $data:ident, $counter:ident, $result:expr, NFA) => {
-        bench!($name, $data, $counter, $result, true);
-    };
-    ($name:ident, $data:ident, $counter:ident, $result:expr, $nfa:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
+macro_rules! bench_core {
+    (
+        $fn_name:ident, $group:expr, $data:ident,
+        fields: $fields:expr, records: $records:expr
+    ) => {
+        fn $fn_name(c: &mut Criterion) {
             let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            let mut rdr = ReaderBuilder::new().nfa($nfa).build();
-            b.iter(|| {
-                rdr.reset();
-                assert_eq!($counter(&mut rdr, data), $result);
-            })
+            let mut g = c.benchmark_group($group);
+            g.throughput(Throughput::Bytes(data.len() as u64));
+
+            g.bench_function("field_dfa", |b| {
+                let mut rdr = ReaderBuilder::new().build();
+                b.iter(|| {
+                    rdr.reset();
+                    assert_eq!(count_fields(&mut rdr, data), $fields);
+                })
+            });
+
+            g.bench_function("field_nfa", |b| {
+                let mut rdr = ReaderBuilder::new().nfa(true).build();
+                b.iter(|| {
+                    rdr.reset();
+                    assert_eq!(count_fields(&mut rdr, data), $fields);
+                })
+            });
+
+            g.bench_function("record_dfa", |b| {
+                let mut rdr = ReaderBuilder::new().build();
+                b.iter(|| {
+                    rdr.reset();
+                    assert_eq!(count_records(&mut rdr, data), $records);
+                })
+            });
+
+            g.bench_function("record_nfa", |b| {
+                let mut rdr = ReaderBuilder::new().nfa(true).build();
+                b.iter(|| {
+                    rdr.reset();
+                    assert_eq!(count_records(&mut rdr, data), $records);
+                })
+            });
+
+            g.finish();
         }
     };
 }
 
-bench!(count_nfl_field_copy_dfa, NFL, count_fields, 130000);
-bench!(count_nfl_field_copy_nfa, NFL, count_fields, 130000, NFA);
-bench!(count_nfl_record_copy_dfa, NFL, count_records, 10000);
-bench!(count_nfl_record_copy_nfa, NFL, count_records, 10000, NFA);
-
-bench!(count_game_field_copy_dfa, GAME, count_fields, 600000);
-bench!(count_game_field_copy_nfa, GAME, count_fields, 600000, NFA);
-bench!(count_game_record_copy_dfa, GAME, count_records, 100000);
-bench!(count_game_record_copy_nfa, GAME, count_records, 100000, NFA);
-
-bench!(count_pop_field_copy_dfa, POP, count_fields, 140007);
-bench!(count_pop_field_copy_nfa, POP, count_fields, 140007, NFA);
-bench!(count_pop_record_copy_dfa, POP, count_records, 20001);
-bench!(count_pop_record_copy_nfa, POP, count_records, 20001, NFA);
-
-bench!(count_mbta_field_copy_dfa, MBTA, count_fields, 90000);
-bench!(count_mbta_field_copy_nfa, MBTA, count_fields, 90000, NFA);
-bench!(count_mbta_record_copy_dfa, MBTA, count_records, 10000);
-bench!(count_mbta_record_copy_nfa, MBTA, count_records, 10000, NFA);
+bench_core!(bench_nfl, "nfl", NFL,
+    fields: 130000, records: 10000);
+bench_core!(bench_game, "game", GAME,
+    fields: 600000, records: 100000);
+bench_core!(bench_pop, "pop", POP,
+    fields: 140007, records: 20001);
+bench_core!(bench_mbta, "mbta", MBTA,
+    fields: 90000, records: 10000);
 
 fn count_fields(rdr: &mut Reader, mut data: &[u8]) -> u64 {
     use csv_core::ReadFieldResult::*;
@@ -85,10 +96,15 @@ fn count_records(rdr: &mut Reader, mut data: &[u8]) -> u64 {
         data = &data[nin..];
         match res {
             InputEmpty => {}
-            OutputFull | OutputEndsFull => panic!("field too large"),
+            OutputFull | OutputEndsFull => {
+                panic!("field too large")
+            }
             Record => count += 1,
             End => break,
         }
     }
     count
 }
+
+criterion_group!(benches, bench_nfl, bench_game, bench_pop, bench_mbta,);
+criterion_main!(benches);

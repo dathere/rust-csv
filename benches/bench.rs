@@ -1,11 +1,7 @@
-#![feature(test)]
-
-extern crate test;
-
 use std::io;
 
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use test::Bencher;
 
 use csv::{
     ByteRecord, Reader, ReaderBuilder, StringRecord, Trim, Writer,
@@ -122,341 +118,7 @@ impl io::Write for ByteCounter {
     }
 }
 
-macro_rules! bench {
-    ($name:ident, $data:ident, $counter:ident, $result:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr =
-                    ReaderBuilder::new().has_headers(false).from_reader(data);
-                assert_eq!($counter(&mut rdr), $result);
-            })
-        }
-    };
-}
-
-macro_rules! bench_trimmed {
-    ($name:ident, $data:ident, $counter:ident, $result:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr = ReaderBuilder::new()
-                    .has_headers(false)
-                    .trim(Trim::All)
-                    .from_reader(data);
-                assert_eq!($counter(&mut rdr), $result);
-            })
-        }
-    };
-}
-
-macro_rules! bench_serde {
-    (no_headers,
-     $name_de:ident, $name_ser:ident, $data:ident, $counter:ident, $type:ty, $result:expr) => {
-        #[bench]
-        fn $name_de(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr =
-                    ReaderBuilder::new().has_headers(false).from_reader(data);
-                assert_eq!($counter::<_, $type>(&mut rdr), $result);
-            })
-        }
-        #[bench]
-        fn $name_ser(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            let values = ReaderBuilder::new()
-                .has_headers(false)
-                .from_reader(data)
-                .deserialize()
-                .collect::<Result<Vec<$type>, _>>()
-                .unwrap();
-
-            let do_it = || {
-                let mut counter = ByteCounter::default();
-                {
-                    let mut wtr = WriterBuilder::new()
-                        .has_headers(false)
-                        .from_writer(&mut counter);
-                    for val in &values {
-                        wtr.serialize(val).unwrap();
-                    }
-                }
-                counter.count
-            };
-            b.bytes = do_it() as u64;
-            b.iter(do_it)
-        }
-    };
-    ($name_de:ident, $name_ser:ident, $data:ident, $counter:ident, $type:ty, $result:expr) => {
-        #[bench]
-        fn $name_de(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr =
-                    ReaderBuilder::new().has_headers(true).from_reader(data);
-                assert_eq!($counter::<_, $type>(&mut rdr), $result);
-            })
-        }
-        #[bench]
-        fn $name_ser(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            let values = ReaderBuilder::new()
-                .has_headers(true)
-                .from_reader(data)
-                .deserialize()
-                .collect::<Result<Vec<$type>, _>>()
-                .unwrap();
-
-            let do_it = || {
-                let mut counter = ByteCounter::default();
-                {
-                    let mut wtr = WriterBuilder::new()
-                        .has_headers(true)
-                        .from_writer(&mut counter);
-                    for val in &values {
-                        wtr.serialize(val).unwrap();
-                    }
-                }
-                counter.count
-            };
-            b.bytes = do_it() as u64;
-            b.iter(do_it)
-        }
-    };
-}
-
-macro_rules! bench_serde_borrowed_bytes {
-    ($name:ident, $data:ident, $type:ty, $headers:expr, $result:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr = ReaderBuilder::new()
-                    .has_headers($headers)
-                    .from_reader(data);
-                let mut count = 0;
-                let mut rec = ByteRecord::new();
-                while rdr.read_byte_record(&mut rec).unwrap() {
-                    let _: $type = rec.deserialize(None).unwrap();
-                    count += 1;
-                }
-                count
-            })
-        }
-    };
-}
-
-macro_rules! bench_serde_borrowed_str {
-    ($name:ident, $data:ident, $type:ty, $headers:expr, $result:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            b.iter(|| {
-                let mut rdr = ReaderBuilder::new()
-                    .has_headers($headers)
-                    .from_reader(data);
-                let mut count = 0;
-                let mut rec = StringRecord::new();
-                while rdr.read_record(&mut rec).unwrap() {
-                    let _: $type = rec.deserialize(None).unwrap();
-                    count += 1;
-                }
-                count
-            })
-        }
-    };
-}
-
-bench_serde!(
-    count_nfl_deserialize_owned_bytes,
-    count_nfl_serialize_owned_bytes,
-    NFL,
-    count_deserialize_owned_bytes,
-    NFLRowOwned,
-    9999
-);
-bench_serde!(
-    count_nfl_deserialize_owned_str,
-    count_nfl_serialize_owned_str,
-    NFL,
-    count_deserialize_owned_str,
-    NFLRowOwned,
-    9999
-);
-bench_serde_borrowed_bytes!(
-    count_nfl_deserialize_borrowed_bytes,
-    NFL,
-    NFLRowBorrowed,
-    true,
-    9999
-);
-bench_serde_borrowed_str!(
-    count_nfl_deserialize_borrowed_str,
-    NFL,
-    NFLRowBorrowed,
-    true,
-    9999
-);
-bench!(count_nfl_iter_bytes, NFL, count_iter_bytes, 130000);
-bench_trimmed!(count_nfl_iter_bytes_trimmed, NFL, count_iter_bytes, 130000);
-bench!(count_nfl_iter_str, NFL, count_iter_str, 130000);
-bench_trimmed!(count_nfl_iter_str_trimmed, NFL, count_iter_str, 130000);
-bench!(count_nfl_read_bytes, NFL, count_read_bytes, 130000);
-bench!(count_nfl_read_str, NFL, count_read_str, 130000);
-bench_serde!(
-    no_headers,
-    count_game_deserialize_owned_bytes,
-    count_game_serialize_owned_bytes,
-    GAME,
-    count_deserialize_owned_bytes,
-    GAMERowOwned,
-    100000
-);
-bench_serde!(
-    no_headers,
-    count_game_deserialize_owned_str,
-    count_game_serialize_owned_str,
-    GAME,
-    count_deserialize_owned_str,
-    GAMERowOwned,
-    100000
-);
-bench_serde_borrowed_bytes!(
-    count_game_deserialize_borrowed_bytes,
-    GAME,
-    GAMERowBorrowed,
-    true,
-    100000
-);
-bench_serde_borrowed_str!(
-    count_game_deserialize_borrowed_str,
-    GAME,
-    GAMERowBorrowed,
-    true,
-    100000
-);
-bench!(count_game_iter_bytes, GAME, count_iter_bytes, 600000);
-bench!(count_game_iter_str, GAME, count_iter_str, 600000);
-bench!(count_game_read_bytes, GAME, count_read_bytes, 600000);
-bench!(count_game_read_str, GAME, count_read_str, 600000);
-bench_serde!(
-    count_pop_deserialize_owned_bytes,
-    count_pop_serialize_owned_bytes,
-    POP,
-    count_deserialize_owned_bytes,
-    POPRowOwned,
-    20000
-);
-bench_serde!(
-    count_pop_deserialize_owned_str,
-    count_pop_serialize_owned_str,
-    POP,
-    count_deserialize_owned_str,
-    POPRowOwned,
-    20000
-);
-bench_serde_borrowed_bytes!(
-    count_pop_deserialize_borrowed_bytes,
-    POP,
-    POPRowBorrowed,
-    true,
-    20000
-);
-bench_serde_borrowed_str!(
-    count_pop_deserialize_borrowed_str,
-    POP,
-    POPRowBorrowed,
-    true,
-    20000
-);
-bench!(count_pop_iter_bytes, POP, count_iter_bytes, 140007);
-bench!(count_pop_iter_str, POP, count_iter_str, 140007);
-bench!(count_pop_read_bytes, POP, count_read_bytes, 140007);
-bench!(count_pop_read_str, POP, count_read_str, 140007);
-bench_serde!(
-    count_mbta_deserialize_owned_bytes,
-    count_mbta_serialize_owned_bytes,
-    MBTA,
-    count_deserialize_owned_bytes,
-    MBTARowOwned,
-    9999
-);
-bench_serde!(
-    count_mbta_deserialize_owned_str,
-    count_mbta_serialize_owned_str,
-    MBTA,
-    count_deserialize_owned_str,
-    MBTARowOwned,
-    9999
-);
-bench_serde_borrowed_bytes!(
-    count_mbta_deserialize_borrowed_bytes,
-    MBTA,
-    MBTARowBorrowed,
-    true,
-    9999
-);
-bench_serde_borrowed_str!(
-    count_mbta_deserialize_borrowed_str,
-    MBTA,
-    MBTARowBorrowed,
-    true,
-    9999
-);
-bench!(count_mbta_iter_bytes, MBTA, count_iter_bytes, 90000);
-bench!(count_mbta_iter_str, MBTA, count_iter_str, 90000);
-bench!(count_mbta_read_bytes, MBTA, count_read_bytes, 90000);
-bench!(count_mbta_read_str, MBTA, count_read_str, 90000);
-
-macro_rules! bench_write {
-    ($name:ident, $data:ident) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            let records = collect_records(data);
-
-            b.iter(|| {
-                let mut wtr = Writer::from_writer(vec![]);
-                for r in &records {
-                    wtr.write_record(r).unwrap();
-                }
-                assert!(wtr.flush().is_ok());
-            })
-        }
-    };
-}
-
-macro_rules! bench_write_bytes {
-    ($name:ident, $data:ident) => {
-        #[bench]
-        fn $name(b: &mut Bencher) {
-            let data = $data.as_bytes();
-            b.bytes = data.len() as u64;
-            let records = collect_records(data);
-
-            b.iter(|| {
-                let mut wtr = Writer::from_writer(vec![]);
-                for r in &records {
-                    wtr.write_byte_record(r).unwrap();
-                }
-                assert!(wtr.flush().is_ok());
-            })
-        }
-    };
-}
-
-bench_write!(write_nfl_record, NFL);
-bench_write_bytes!(write_nfl_bytes, NFL);
+// --- Helper functions ---
 
 fn count_deserialize_owned_bytes<R, D>(rdr: &mut Reader<R>) -> u64
 where
@@ -523,3 +185,235 @@ fn collect_records(data: &[u8]) -> Vec<ByteRecord> {
     let mut rdr = ReaderBuilder::new().has_headers(false).from_reader(data);
     rdr.byte_records().collect::<Result<Vec<_>, _>>().unwrap()
 }
+
+// --- Benchmark definitions ---
+
+macro_rules! bench_dataset {
+    (
+        $fn_name:ident, $group:expr, $data:ident,
+        field_count: $fc:expr,
+        serde_count: $sc:expr,
+        serde_headers: $sh:expr,
+        owned: $owned:ty,
+        borrowed: $borrowed:ty
+    ) => {
+        fn $fn_name(c: &mut Criterion) {
+            let data = $data.as_bytes();
+            let mut g = c.benchmark_group($group);
+            g.throughput(Throughput::Bytes(data.len() as u64));
+
+            g.bench_function("iter_bytes", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(false)
+                        .from_reader(data);
+                    assert_eq!(count_iter_bytes(&mut rdr), $fc);
+                })
+            });
+
+            g.bench_function("iter_str", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(false)
+                        .from_reader(data);
+                    assert_eq!(count_iter_str(&mut rdr), $fc);
+                })
+            });
+
+            g.bench_function("read_bytes", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(false)
+                        .from_reader(data);
+                    assert_eq!(count_read_bytes(&mut rdr), $fc);
+                })
+            });
+
+            g.bench_function("read_str", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(false)
+                        .from_reader(data);
+                    assert_eq!(count_read_str(&mut rdr), $fc);
+                })
+            });
+
+            g.bench_function("deserialize_owned_bytes", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers($sh)
+                        .from_reader(data);
+                    assert_eq!(
+                        count_deserialize_owned_bytes::<_, $owned>(&mut rdr),
+                        $sc
+                    );
+                })
+            });
+
+            g.bench_function("deserialize_owned_str", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers($sh)
+                        .from_reader(data);
+                    assert_eq!(
+                        count_deserialize_owned_str::<_, $owned>(&mut rdr),
+                        $sc
+                    );
+                })
+            });
+
+            g.bench_function("deserialize_borrowed_bytes", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(true)
+                        .from_reader(data);
+                    let mut count = 0u64;
+                    let mut rec = ByteRecord::new();
+                    while rdr.read_byte_record(&mut rec).unwrap() {
+                        let _: $borrowed = rec.deserialize(None).unwrap();
+                        count += 1;
+                    }
+                    count
+                })
+            });
+
+            g.bench_function("deserialize_borrowed_str", |b| {
+                b.iter(|| {
+                    let mut rdr = ReaderBuilder::new()
+                        .has_headers(true)
+                        .from_reader(data);
+                    let mut count = 0u64;
+                    let mut rec = StringRecord::new();
+                    while rdr.read_record(&mut rec).unwrap() {
+                        let _: $borrowed = rec.deserialize(None).unwrap();
+                        count += 1;
+                    }
+                    count
+                })
+            });
+
+            let ser_values: Vec<$owned> = ReaderBuilder::new()
+                .has_headers($sh)
+                .from_reader(data)
+                .deserialize()
+                .collect::<Result<_, _>>()
+                .unwrap();
+            g.bench_function("serialize", |b| {
+                b.iter(|| {
+                    let mut wtr = WriterBuilder::new()
+                        .has_headers($sh)
+                        .from_writer(ByteCounter::default());
+                    for val in &ser_values {
+                        wtr.serialize(val).unwrap();
+                    }
+                })
+            });
+
+            g.finish();
+        }
+    };
+}
+
+bench_dataset!(
+    bench_nfl, "nfl", NFL,
+    field_count: 130000,
+    serde_count: 9999,
+    serde_headers: true,
+    owned: NFLRowOwned,
+    borrowed: NFLRowBorrowed
+);
+
+bench_dataset!(
+    bench_game, "game", GAME,
+    field_count: 600000,
+    serde_count: 100000,
+    serde_headers: false,
+    owned: GAMERowOwned,
+    borrowed: GAMERowBorrowed
+);
+
+bench_dataset!(
+    bench_pop, "pop", POP,
+    field_count: 140007,
+    serde_count: 20000,
+    serde_headers: true,
+    owned: POPRowOwned,
+    borrowed: POPRowBorrowed
+);
+
+bench_dataset!(
+    bench_mbta, "mbta", MBTA,
+    field_count: 90000,
+    serde_count: 9999,
+    serde_headers: true,
+    owned: MBTARowOwned,
+    borrowed: MBTARowBorrowed
+);
+
+fn bench_nfl_trimmed(c: &mut Criterion) {
+    let data = NFL.as_bytes();
+    let mut g = c.benchmark_group("nfl_trimmed");
+    g.throughput(Throughput::Bytes(data.len() as u64));
+
+    g.bench_function("iter_bytes", |b| {
+        b.iter(|| {
+            let mut rdr = ReaderBuilder::new()
+                .has_headers(false)
+                .trim(Trim::All)
+                .from_reader(data);
+            assert_eq!(count_iter_bytes(&mut rdr), 130000);
+        })
+    });
+
+    g.bench_function("iter_str", |b| {
+        b.iter(|| {
+            let mut rdr = ReaderBuilder::new()
+                .has_headers(false)
+                .trim(Trim::All)
+                .from_reader(data);
+            assert_eq!(count_iter_str(&mut rdr), 130000);
+        })
+    });
+
+    g.finish();
+}
+
+fn bench_nfl_write(c: &mut Criterion) {
+    let data = NFL.as_bytes();
+    let records = collect_records(data);
+    let mut g = c.benchmark_group("nfl_write");
+    g.throughput(Throughput::Bytes(data.len() as u64));
+
+    g.bench_function("record", |b| {
+        b.iter(|| {
+            let mut wtr = Writer::from_writer(vec![]);
+            for r in &records {
+                wtr.write_record(r).unwrap();
+            }
+            wtr.flush().unwrap();
+        })
+    });
+
+    g.bench_function("bytes", |b| {
+        b.iter(|| {
+            let mut wtr = Writer::from_writer(vec![]);
+            for r in &records {
+                wtr.write_byte_record(r).unwrap();
+            }
+            wtr.flush().unwrap();
+        })
+    });
+
+    g.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_nfl,
+    bench_nfl_trimmed,
+    bench_nfl_write,
+    bench_game,
+    bench_pop,
+    bench_mbta,
+);
+criterion_main!(benches);
