@@ -1100,40 +1100,53 @@ const CLASS_SIZE: usize = 256;
 ///
 /// For the most part, this is a transition table, but various optimizations
 /// have been applied to reduce its memory footprint.
+/// A combined DFA transition entry storing both the next
+/// state and whether the input byte should be emitted.
+#[derive(Clone, Copy)]
+struct DfaTransition {
+    state: DfaState,
+    has_output: bool,
+}
+
 struct Dfa {
-    /// The core transition table. Each row corresponds to the transitions for
-    /// each input equivalence class. (Input bytes are mapped to their
-    /// corresponding equivalence class with the `classes` map.)
+    /// The core transition table. Each row corresponds to the
+    /// transitions for each input equivalence class. (Input
+    /// bytes are mapped to their corresponding equivalence
+    /// class with the `classes` map.)
     ///
-    /// DFA states are represented as an index corresponding to the start of
-    /// its row in this table.
-    trans: [DfaState; TRANS_SIZE],
-    /// A table with the same layout as `trans`, except its values indicate
-    /// whether a particular `(state, equivalence class)` pair should emit an
-    /// output byte.
-    has_output: [bool; TRANS_SIZE],
+    /// DFA states are represented as an index corresponding to
+    /// the start of its row in this table.
+    ///
+    /// Each entry contains both the next state and whether the
+    /// input byte should be emitted, merged into a single
+    /// lookup for cache locality.
+    trans: [DfaTransition; TRANS_SIZE],
     /// A map from input byte to equivalence class.
     ///
-    /// This is responsible for reducing the effective alphabet size from
-    /// 256 to `TRANS_CLASSES`.
+    /// This is responsible for reducing the effective alphabet
+    /// size from 256 to `TRANS_CLASSES`.
     classes: DfaClasses,
-    /// The DFA state corresponding to being inside an unquoted field.
+    /// The DFA state corresponding to being inside an unquoted
+    /// field.
     in_field: DfaState,
-    /// The DFA state corresponding to being inside an quoted field.
+    /// The DFA state corresponding to being inside an quoted
+    /// field.
     in_quoted: DfaState,
-    /// The minimum DFA state that indicates a field has been parsed. All DFA
-    /// states greater than this are also final-field states.
+    /// The minimum DFA state that indicates a field has been
+    /// parsed. All DFA states greater than this are also
+    /// final-field states.
     final_field: DfaState,
-    /// The minimum DFA state that indicates a record has been parsed. All DFA
-    /// states greater than this are also final-record states.
+    /// The minimum DFA state that indicates a record has been
+    /// parsed. All DFA states greater than this are also
+    /// final-record states.
     final_record: DfaState,
 }
 
 impl Dfa {
     const fn new() -> Dfa {
         Dfa {
-            trans: [DfaState(0); TRANS_SIZE],
-            has_output: [false; TRANS_SIZE],
+            trans: [DfaTransition { state: DfaState(0), has_output: false };
+                TRANS_SIZE],
             classes: DfaClasses::new(),
             in_field: DfaState(0),
             in_quoted: DfaState(0),
@@ -1160,7 +1173,8 @@ impl Dfa {
     const fn get_output(&self, state: DfaState, c: u8) -> (DfaState, bool) {
         let cls = self.classes.classes[c as usize];
         let idx = state.0 as usize + cls as usize;
-        (self.trans[idx], self.has_output[idx])
+        let t = self.trans[idx];
+        (t.state, t.has_output)
     }
 
     #[inline]
@@ -1173,8 +1187,7 @@ impl Dfa {
     ) {
         let cls = self.classes.classes[c as usize];
         let idx = from.0 as usize + cls as usize;
-        self.trans[idx] = to;
-        self.has_output[idx] = output;
+        self.trans[idx] = DfaTransition { state: to, has_output: output };
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use core::fmt;
 
-use memchr::memchr;
+use memchr::{memchr, memchr2, memchr3};
 
 use crate::{QuoteStyle, Terminator};
 
@@ -19,6 +19,8 @@ impl WriterBuilder {
         let wtr = Writer {
             state: WriterState::default(),
             requires_quotes: [false; 256],
+            special_bytes: [0; 8],
+            special_count: 0,
             delimiter: b',',
             term: Terminator::Any(b'\n'),
             style: QuoteStyle::default(),
@@ -62,6 +64,16 @@ impl WriterBuilder {
         if let Some(comment) = self.wtr.comment {
             wtr.requires_quotes[comment as usize] = true;
         }
+        // Collect the distinct special bytes for memchr
+        // scanning in needs_quotes().
+        let mut count = 0;
+        for (i, &req) in wtr.requires_quotes.iter().enumerate() {
+            if req && count < wtr.special_bytes.len() {
+                wtr.special_bytes[count] = i as u8;
+                count += 1;
+            }
+        }
+        wtr.special_count = count;
         wtr
     }
 
@@ -186,6 +198,10 @@ pub enum WriteResult {
 pub struct Writer {
     state: WriterState,
     requires_quotes: [bool; 256],
+    /// The distinct bytes that require quoting, for
+    /// SIMD-accelerated scanning via memchr.
+    special_bytes: [u8; 8],
+    special_count: usize,
     delimiter: u8,
     term: Terminator,
     style: QuoteStyle,
@@ -200,6 +216,8 @@ impl Clone for Writer {
         Writer {
             state: self.state.clone(),
             requires_quotes: self.requires_quotes,
+            special_bytes: self.special_bytes,
+            special_count: self.special_count,
             delimiter: self.delimiter,
             term: self.term,
             style: self.style,
@@ -412,21 +430,36 @@ impl Writer {
     /// Returns true if and only if the given input field *requires* quotes to
     /// preserve the integrity of `input` while taking into account the current
     /// configuration of this writer (except for the configured quoting style).
+    /// Uses SIMD-accelerated memchr to scan for special bytes
+    /// that require quoting, instead of table lookups.
     #[inline]
-    fn needs_quotes(&self, mut input: &[u8]) -> bool {
-        let mut needs = false;
-        while !needs && input.len() >= 8 {
-            needs = self.requires_quotes[input[0] as usize]
-                || self.requires_quotes[input[1] as usize]
-                || self.requires_quotes[input[2] as usize]
-                || self.requires_quotes[input[3] as usize]
-                || self.requires_quotes[input[4] as usize]
-                || self.requires_quotes[input[5] as usize]
-                || self.requires_quotes[input[6] as usize]
-                || self.requires_quotes[input[7] as usize];
-            input = &input[8..];
+    fn needs_quotes(&self, input: &[u8]) -> bool {
+        let s = self.special_bytes;
+        match self.special_count {
+            0 => false,
+            1 => memchr(s[0], input).is_some(),
+            2 => memchr2(s[0], s[1], input).is_some(),
+            3 => memchr3(s[0], s[1], s[2], input).is_some(),
+            _ => {
+                if memchr3(s[0], s[1], s[2], input).is_some() {
+                    return true;
+                }
+                match self.special_count {
+                    4 => memchr(s[3], input).is_some(),
+                    5 => memchr2(s[3], s[4], input).is_some(),
+                    6 => memchr3(s[3], s[4], s[5], input).is_some(),
+                    _ => {
+                        if memchr3(s[3], s[4], s[5], input).is_some() {
+                            return true;
+                        }
+                        match self.special_count {
+                            7 => memchr(s[6], input).is_some(),
+                            _ => memchr2(s[6], s[7], input).is_some(),
+                        }
+                    }
+                }
+            }
         }
-        needs || input.iter().any(|&b| self.is_special_byte(b))
     }
 
     /// Returns true if and only if the given byte corresponds to a special
@@ -518,10 +551,9 @@ pub fn is_non_numeric(input: &[u8]) -> bool {
     }
 
     let Ok(s) = simdutf8::basic::from_utf8(input) else { return true };
-    // I suppose this could be faster if we wrote validators of numbers instead
-    // of using the actual parser, but that's probably a lot of work for a bit
-    // of a niche feature.
-    s.parse::<f64>().is_err() && s.parse::<i128>().is_err()
+    // Try integer parsing first since it's cheaper than float
+    // parsing, and most numeric CSV data is integers.
+    s.parse::<i128>().is_err() && s.parse::<f64>().is_err()
 }
 
 /// Escape quotes `input` and writes the result to `output`.
