@@ -1626,7 +1626,7 @@ impl<R: io::Read> Reader<R> {
         use csv_core::ReadRecordResult::*;
 
         record.clear();
-        record.set_position(Some(self.state.cur_pos.clone()));
+        record.set_position(Some(self.state.cur_pos));
         if self.state.eof != ReaderEofState::NotEof {
             return Ok(false);
         }
@@ -1698,7 +1698,7 @@ impl<R: io::Read> Reader<R> {
     ///     let mut pos = Position::new();
     ///     loop {
     ///         // Read the position immediately before each record.
-    ///         let next_pos = iter.reader().position().clone();
+    ///         let next_pos = *iter.reader().position();
     ///         if iter.next().is_none() {
     ///             break;
     ///         }
@@ -1815,7 +1815,7 @@ impl<R: io::Read + io::Seek> Reader<R> {
     ///     let mut pos = Position::new();
     ///     loop {
     ///         // Read the position immediately before each record.
-    ///         let next_pos = iter.reader().position().clone();
+    ///         let next_pos = *iter.reader().position();
     ///         if iter.next().is_none() {
     ///             break;
     ///         }
@@ -2593,12 +2593,12 @@ mod tests {
             .from_reader("a,b,c\nx,y,z".as_bytes())
             .into_records();
 
-        let pos = rdr.next().unwrap().unwrap().position().unwrap().clone();
+        let pos = rdr.next().unwrap().unwrap().position().copied().unwrap();
         assert_eq!(pos.byte(), 0);
         assert_eq!(pos.line(), 1);
         assert_eq!(pos.record(), 0);
 
-        let pos = rdr.next().unwrap().unwrap().position().unwrap().clone();
+        let pos = rdr.next().unwrap().unwrap().position().copied().unwrap();
         assert_eq!(pos.byte(), 6);
         assert_eq!(pos.line(), 2);
         assert_eq!(pos.record(), 1);
@@ -2612,7 +2612,7 @@ mod tests {
             .from_reader("a,b,c\nx,y,z".as_bytes())
             .into_records();
 
-        let pos = rdr.next().unwrap().unwrap().position().unwrap().clone();
+        let pos = rdr.next().unwrap().unwrap().position().copied().unwrap();
         assert_eq!(pos.byte(), 6);
         assert_eq!(pos.line(), 2);
         assert_eq!(pos.record(), 1);

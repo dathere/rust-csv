@@ -536,7 +536,7 @@ impl ByteRecord {
     #[inline]
     pub(crate) fn clone_truncated(&self) -> ByteRecord {
         let mut br = ByteRecord::new();
-        br.0.pos.clone_from(&self.0.pos);
+        br.0.pos = self.0.pos;
         br.0.bounds.clone_from(&self.0.bounds);
         br.0.fields = self.0.fields[..self.0.bounds.end()].to_vec();
         br
@@ -629,7 +629,7 @@ impl ByteRecord {
 /// Byte offsets and record indices start at `0`. Line numbers start at `1`.
 ///
 /// A CSV reader will automatically assign the position of each record.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Position {
     byte: u64,
     line: u64,

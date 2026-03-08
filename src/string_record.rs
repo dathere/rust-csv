@@ -676,7 +676,7 @@ impl StringRecord {
         // clear the record. (It is bad for `record` to contain invalid UTF-8
         // because other accessor methods, like `get`, assume that every field
         // is valid UTF-8.)
-        let pos = rdr.position().clone();
+        let pos = *rdr.position();
         let read_res = rdr.read_byte_record(&mut self.0);
         let utf8_res = match self.0.validate() {
             Ok(()) => Ok(()),
