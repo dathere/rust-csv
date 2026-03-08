@@ -636,6 +636,12 @@ pub struct Position {
     record: u64,
 }
 
+impl Default for Position {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Position {
     /// Returns a new position initialized to the start value.
     #[inline]
