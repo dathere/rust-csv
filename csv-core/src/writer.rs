@@ -68,11 +68,19 @@ impl WriterBuilder {
         // scanning in needs_quotes().
         let mut count = 0;
         for (i, &req) in wtr.requires_quotes.iter().enumerate() {
-            if req && count < wtr.special_bytes.len() {
-                wtr.special_bytes[count] = i as u8;
+            if req {
+                if count < wtr.special_bytes.len() {
+                    wtr.special_bytes[count] = i as u8;
+                }
                 count += 1;
             }
         }
+        assert!(
+            count <= wtr.special_bytes.len(),
+            "too many special bytes for memchr scanning (found {count}, \
+             max {})",
+            wtr.special_bytes.len()
+        );
         wtr.special_count = count;
         wtr
     }

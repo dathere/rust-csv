@@ -1108,6 +1108,11 @@ struct DfaTransition {
     has_output: bool,
 }
 
+const _: () = assert!(
+    core::mem::size_of::<DfaTransition>() == 2,
+    "DfaTransition must be exactly 2 bytes"
+);
+
 struct Dfa {
     /// The core transition table. Each row corresponds to the
     /// transitions for each input equivalence class. (Input
