@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **rust-csv** is the standard CSV library for Rust (crate name: `csv`), originally by BurntSushi. It provides fast CSV parsing and writing with full Serde support. This is a Cargo workspace with three crates:
 
-- **csv** (root) — High-level reader/writer with Serde integration. Edition 2021, MSRV 1.93.
+- **csv** (root) — High-level reader/writer with Serde integration. Edition 2021, MSRV 1.95.
 - **csv-core** (`csv-core/`) — Low-level `no_std` DFA-based parser. Edition 2018.
 - **csv-index** (`csv-index/`) — On-disk CSV indexing for random access. Edition 2018.
 
@@ -28,8 +28,10 @@ cargo fmt --all --check
 cargo miri test --lib --verbose
 cargo miri test --doc --verbose
 
-# Benchmarks (nightly only)
-cargo bench --verbose --no-run
+# Benchmarks (Criterion, stable Rust)
+cargo bench --verbose --no-run          # compile only
+cargo bench                             # run all benches
+cargo bench -- nfl                      # filter by group (nfl, game, pop, mbta)
 ```
 
 ## Code Style
@@ -50,7 +52,7 @@ Key source files in `src/`:
 
 ## CI Checks
 
-CI tests across: pinned MSRV (1.93), stable, beta, nightly, macOS, Windows (MSVC + GNU). Additional jobs:
+CI tests across: pinned MSRV (1.95), stable, beta, nightly, macOS, Windows (MSVC + GNU). Additional jobs:
 - `cargo fmt --all --check`
 - `ci/check-copy cookbook` and `ci/check-copy tutorial` — verifies example files in `examples/` are in sync with `src/tutorial.rs` and `src/cookbook.rs`
 - Miri with `-Zmiri-strict-provenance`
