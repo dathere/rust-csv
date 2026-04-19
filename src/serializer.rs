@@ -24,6 +24,29 @@ struct SeRecord<'w, W: 'w + io::Write> {
     wtr: &'w mut Writer<W>,
 }
 
+// zmij formats positive exponents as `1e+20`; csv historically used ryu
+// which emits `1e20`. Strip the `+` to preserve byte-identical output.
+// Typical CSV floats (financial, geographic, tabular) fit in non-scientific
+// notation, so the strip branch is cold in practice — we mark it as such.
+// zmij's f64 output is bounded well under 32 bytes.
+#[inline]
+fn write_float_field<W: io::Write>(
+    wtr: &mut Writer<W>,
+    bytes: &[u8],
+) -> Result<(), Error> {
+    match bytes.iter().position(|&b| b == b'+') {
+        None => wtr.write_field(bytes),
+        Some(pos) => {
+            std::hint::cold_path();
+            let mut out = [0u8; 32];
+            out[..pos].copy_from_slice(&bytes[..pos]);
+            let tail = &bytes[pos + 1..];
+            out[pos..pos + tail.len()].copy_from_slice(tail);
+            wtr.write_field(&out[..bytes.len() - 1])
+        }
+    }
+}
+
 impl<'a, 'w, W: io::Write> Serializer for &'a mut SeRecord<'w, W> {
     type Ok = ();
     type Error = Error;
@@ -94,13 +117,13 @@ impl<'a, 'w, W: io::Write> Serializer for &'a mut SeRecord<'w, W> {
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        let mut buffer = ryu::Buffer::new();
-        self.wtr.write_field(buffer.format(v))
+        let mut buffer = zmij::Buffer::new();
+        write_float_field(self.wtr, buffer.format(v).as_bytes())
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        let mut buffer = ryu::Buffer::new();
-        self.wtr.write_field(buffer.format(v))
+        let mut buffer = zmij::Buffer::new();
+        write_float_field(self.wtr, buffer.format(v).as_bytes())
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
@@ -1324,5 +1347,50 @@ mod tests {
         let (wrote, got) = serialize_header(row.clone());
         assert!(wrote);
         assert_eq!(got, "label,num,label2,value,empty,label,num");
+    }
+
+    // Regression: zmij (default float formatter) emits `e+` for positive
+    // exponents, which the internal shim strips to match the historical
+    // ryu-style `eN` form. Catch any drift in zmij output or shim logic.
+    #[test]
+    fn float_serialize_ryu_compat() {
+        // (value, expected output)
+        let f64_cases: &[(f64, &str)] = &[
+            (0.0, "0.0"),
+            (-0.0, "-0.0"),
+            (1.0, "1.0"),
+            (-1.5, "-1.5"),
+            (3.14159265358979, "3.14159265358979"),
+            (12345.6789, "12345.6789"),
+            (0.1 + 0.2, "0.30000000000000004"),
+            (1e20, "1e20"),
+            (1e100, "1e100"),
+            (1e308, "1e308"),
+            (1e-10, "1e-10"),
+            (5e-324, "5e-324"),
+            (f64::MIN, "-1.7976931348623157e308"),
+            (f64::MAX, "1.7976931348623157e308"),
+            (f64::MIN_POSITIVE, "2.2250738585072014e-308"),
+            (f64::INFINITY, "inf"),
+            (f64::NEG_INFINITY, "-inf"),
+        ];
+        for &(v, expected) in f64_cases {
+            let got = serialize((v,));
+            assert_eq!(got.trim_end(), expected, "f64 {:e}", v);
+        }
+
+        let f32_cases: &[(f32, &str)] = &[
+            (0.0, "0.0"),
+            (1.5, "1.5"),
+            (-3.14, "-3.14"),
+            (1e20, "1e20"),
+            (1e-10, "1e-10"),
+            (f32::MIN, "-3.4028235e38"),
+            (f32::MAX, "3.4028235e38"),
+        ];
+        for &(v, expected) in f32_cases {
+            let got = serialize((v,));
+            assert_eq!(got.trim_end(), expected, "f32 {:e}", v);
+        }
     }
 }

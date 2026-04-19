@@ -23,9 +23,9 @@ bench = false
 [dependencies]
 csv-core = { path = "csv-core", version = "0.1.11" }
 itoa = "1"
-ryu = "1"
 serde_core = "1.0"
 simdutf8 = "0.1"
+zmij = "1"
 
 [dev-dependencies]
 bstr = { version = "1", default-features = false, features = ["alloc", "serde"] }
