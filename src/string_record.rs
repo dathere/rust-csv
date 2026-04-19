@@ -677,7 +677,9 @@ impl StringRecord {
         // because other accessor methods, like `get`, assume that every field
         // is valid UTF-8.)
         let pos = *rdr.position();
-        let read_res = rdr.read_byte_record(&mut self.0);
+        // Skip the inner ASCII trim pass; `Reader::read_record` applies a
+        // Unicode-aware trim on this `StringRecord` that covers it.
+        let read_res = rdr.read_byte_record_no_trim(&mut self.0);
         let utf8_res = match self.0.validate() {
             Ok(()) => Ok(()),
             Err(err) => {

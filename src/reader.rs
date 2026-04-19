@@ -1531,10 +1531,10 @@ impl<R: io::Read> Reader<R> {
     /// }
     /// ```
     pub fn read_record(&mut self, record: &mut StringRecord) -> Result<bool> {
+        // `StringRecord::read` asks the inner reader to skip its ASCII trim
+        // pass; the Unicode-aware pass below is a strict superset and makes
+        // the ASCII pass pure waste on this path.
         let result = record.read(self);
-        // We need to trim again because trimming string records includes
-        // Unicode whitespace. (ByteRecord trimming only includes ASCII
-        // whitespace.)
         if self.state.trim.should_trim_fields() {
             record.trim();
         }
@@ -1582,6 +1582,29 @@ impl<R: io::Read> Reader<R> {
         &mut self,
         record: &mut ByteRecord,
     ) -> Result<bool> {
+        self.read_byte_record_inner(record, true)
+    }
+
+    /// Like `read_byte_record`, but does not apply the configured ASCII
+    /// `trim()` pass on the resulting `ByteRecord`. This is only sound when
+    /// the caller performs its own trim (e.g. `StringRecord::read`, whose
+    /// caller applies a Unicode-aware trim that strictly covers ASCII
+    /// whitespace) — otherwise `trim` configuration is silently ignored.
+    #[inline]
+    pub(crate) fn read_byte_record_no_trim(
+        &mut self,
+        record: &mut ByteRecord,
+    ) -> Result<bool> {
+        self.read_byte_record_inner(record, false)
+    }
+
+    #[inline(always)]
+    fn read_byte_record_inner(
+        &mut self,
+        record: &mut ByteRecord,
+        apply_trim: bool,
+    ) -> Result<bool> {
+        let do_trim = apply_trim && self.state.trim.should_trim_fields();
         if !self.state.seeked && !self.state.has_headers && !self.state.first {
             // If the caller indicated "no headers" and we haven't yielded the
             // first record yet, then we should yield our header row if we have
@@ -1589,7 +1612,7 @@ impl<R: io::Read> Reader<R> {
             if let Some(ref headers) = self.state.headers {
                 self.state.first = true;
                 record.clone_from(&headers.byte_record);
-                if self.state.trim.should_trim_fields() {
+                if do_trim {
                     record.trim();
                 }
                 return Ok(!record.is_empty());
@@ -1604,13 +1627,13 @@ impl<R: io::Read> Reader<R> {
             // read and return the next one.
             if self.state.has_headers {
                 let result = self.read_byte_record_impl(record);
-                if self.state.trim.should_trim_fields() {
+                if do_trim {
                     record.trim();
                 }
                 return result;
             }
         }
-        if self.state.trim.should_trim_fields() {
+        if do_trim {
             record.trim();
         }
         Ok(ok)
