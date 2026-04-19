@@ -438,10 +438,18 @@ impl Writer {
     /// Returns true if and only if the given input field *requires* quotes to
     /// preserve the integrity of `input` while taking into account the current
     /// configuration of this writer (except for the configured quoting style).
-    /// Uses SIMD-accelerated memchr to scan for special bytes
-    /// that require quoting, instead of table lookups.
+    ///
+    /// Short inputs (<= 16 bytes) use a single pass over the precomputed
+    /// `requires_quotes` lookup table, avoiding the per-call setup cost of
+    /// (typically) two memchr scans. Longer inputs use SIMD-accelerated
+    /// memchr. The threshold was selected empirically on pop/serialize,
+    /// which is dominated by short fields (country codes, region codes,
+    /// short city names, numeric-formatted floats and ints).
     #[inline]
     fn needs_quotes(&self, input: &[u8]) -> bool {
+        if input.len() <= 16 {
+            return input.iter().any(|&b| self.requires_quotes[b as usize]);
+        }
         let s = self.special_bytes;
         match self.special_count {
             0 => false,
