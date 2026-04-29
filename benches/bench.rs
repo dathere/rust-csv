@@ -1,7 +1,10 @@
-use std::io;
+use std::{fmt, io};
 
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{
+    de::{DeserializeOwned, Deserializer, Visitor},
+    Deserialize, Serialize,
+};
 
 use csv::{
     ByteRecord, Reader, ReaderBuilder, StringRecord, Trim, Writer,
@@ -407,6 +410,109 @@ fn bench_nfl_write(c: &mut Criterion) {
     g.finish();
 }
 
+/// A field whose `Deserialize` impl calls `deserialize_any`, so each field
+/// goes through the deserializer's `infer_deserialize` cascade. Used to
+/// benchmark the type-inference path that typed `Deserialize` derives skip.
+#[derive(Debug, Default)]
+struct InferredField;
+
+impl<'de> Deserialize<'de> for InferredField {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        d.deserialize_any(InferredVisitor)
+    }
+}
+
+struct InferredVisitor;
+
+impl<'de> Visitor<'de> for InferredVisitor {
+    type Value = InferredField;
+
+    fn expecting(
+        &self,
+        f: &mut fmt::Formatter,
+    ) -> fmt::Result {
+        f.write_str("any value")
+    }
+
+    fn visit_bool<E>(self, _: bool) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_i64<E>(self, _: i64) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_u64<E>(self, _: u64) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_i128<E>(self, _: i128) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_u128<E>(self, _: u128) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_f64<E>(self, _: f64) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_str<E>(self, _: &str) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_borrowed_str<E>(self, _: &'de str) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_bytes<E>(self, _: &[u8]) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+    fn visit_borrowed_bytes<E>(self, _: &'de [u8]) -> Result<Self::Value, E> {
+        Ok(InferredField)
+    }
+}
+
+// POP has 7 columns; this tuple matches the schema and exercises
+// `infer_deserialize` once per field.
+type POPInferredRow = (
+    InferredField,
+    InferredField,
+    InferredField,
+    InferredField,
+    InferredField,
+    InferredField,
+    InferredField,
+);
+
+fn bench_pop_infer(c: &mut Criterion) {
+    let data = POP.as_bytes();
+    let mut g = c.benchmark_group("pop_infer");
+    g.throughput(Throughput::Bytes(data.len() as u64));
+
+    g.bench_function("infer_owned_str", |b| {
+        b.iter(|| {
+            let mut rdr =
+                ReaderBuilder::new().has_headers(true).from_reader(data);
+            let mut count = 0u64;
+            for result in rdr.deserialize::<POPInferredRow>() {
+                let _ = result.unwrap();
+                count += 1;
+            }
+            assert_eq!(count, 20000);
+        })
+    });
+
+    g.bench_function("infer_borrowed_bytes", |b| {
+        b.iter(|| {
+            let mut rdr =
+                ReaderBuilder::new().has_headers(true).from_reader(data);
+            let mut count = 0u64;
+            let mut rec = ByteRecord::new();
+            while rdr.read_byte_record(&mut rec).unwrap() {
+                let _: POPInferredRow = rec.deserialize(None).unwrap();
+                count += 1;
+            }
+            assert_eq!(count, 20000);
+        })
+    });
+
+    g.finish();
+}
+
 criterion_group!(
     benches,
     bench_nfl,
@@ -414,6 +520,7 @@ criterion_group!(
     bench_nfl_write,
     bench_game,
     bench_pop,
+    bench_pop_infer,
     bench_mbta,
 );
 criterion_main!(benches);
