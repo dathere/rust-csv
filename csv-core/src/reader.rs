@@ -1318,7 +1318,14 @@ impl DfaClasses {
         let in_left = input.len() - *nin;
         let out_left = output.len() - *nout;
         let max_copy = if in_left < out_left { in_left } else { out_left };
-        if max_copy == 0 {
+        // Short-input bypass: memchr's SIMD setup cost dominates the scan
+        // itself for tiny remaining segments. Datasets with small fields
+        // (~5-byte NFL columns) hit this path on every iteration. Falling
+        // through lets the outer DFA loop handle the few bytes byte-by-byte,
+        // which is cheaper than entering memchr just to bail out almost
+        // immediately. Threshold chosen to be ≥ memchr's typical SIMD-wide
+        // first compare.
+        if max_copy < 16 {
             return;
         }
         let scan = &input[*nin..*nin + max_copy];
