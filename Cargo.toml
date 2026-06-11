@@ -22,6 +22,7 @@ bench = false
 
 [dependencies]
 csv-core = { path = "csv-core", version = "0.1.11" }
+fast-float2 = "0.2"
 itoa = "1"
 serde_core = "1.0"
 simdutf8 = "0.1"

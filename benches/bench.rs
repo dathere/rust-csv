@@ -427,10 +427,7 @@ struct InferredVisitor;
 impl<'de> Visitor<'de> for InferredVisitor {
     type Value = InferredField;
 
-    fn expecting(
-        &self,
-        f: &mut fmt::Formatter,
-    ) -> fmt::Result {
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("any value")
     }
 

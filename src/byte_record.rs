@@ -574,11 +574,30 @@ impl ByteRecord {
     #[inline]
     pub(crate) fn validate(&self) -> result::Result<(), Utf8Error> {
         // If the entire buffer is ASCII, then we have nothing to fear.
-        if self.0.fields[..self.0.bounds.end()].is_ascii() {
+        let buf = &self.0.fields[..self.0.bounds.end()];
+        if buf.is_ascii() {
             return Ok(());
         }
-        // Otherwise, we must check each field individually to ensure that
-        // it's valid UTF-8, use simdutf8 compat flavor
+        // Otherwise, validate the entire buffer in a single SIMD pass
+        // rather than paying the per-call setup cost of simdutf8 for every
+        // (typically short) field. The buffer being valid UTF-8 does not by
+        // itself imply that every *field* is valid UTF-8, since a multi-byte
+        // sequence could straddle a field boundary. So we additionally
+        // require that no field starts on a UTF-8 continuation byte, which
+        // together with whole-buffer validity guarantees that every field
+        // is valid UTF-8.
+        if simdutf8::basic::from_utf8(buf).is_ok()
+            && self
+                .0
+                .bounds
+                .ends()
+                .iter()
+                .all(|&end| buf.get(end).map_or(true, |&b| b & 0xC0 != 0x80))
+        {
+            return Ok(());
+        }
+        // Something is invalid: fall back to checking each field
+        // individually to report which one.
         #[cfg(feature = "simd_utf8_compat")]
         for (i, field) in self.iter().enumerate() {
             if let Err(err) = simdutf8::compat::from_utf8(field) {
@@ -594,6 +613,10 @@ impl ByteRecord {
                 return Err(new_utf8_error(i, 0));
             }
         }
+        // Unreachable in practice: the fast path only fails when some field
+        // is invalid, which the loop above reports. But if the per-field
+        // walk found nothing (e.g. a boundary false positive), the record is
+        // in fact valid.
         Ok(())
     }
 

@@ -205,21 +205,47 @@ impl<'r> DeRecord<'r> for DeStringRecord<'r> {
     ) -> Result<V::Value, DeserializeError> {
         let x = self.next_field()?;
         if x == "true" {
-            visitor.visit_bool(true)
+            return visitor.visit_bool(true);
         } else if x == "false" {
-            visitor.visit_bool(false)
-        } else if let Some(n) = try_positive_integer64(x) {
-            visitor.visit_u64(n)
-        } else if let Some(n) = try_negative_integer64(x) {
-            visitor.visit_i64(n)
-        } else if let Some(n) = try_positive_integer128(x) {
-            visitor.visit_u128(n)
-        } else if let Some(n) = try_negative_integer128(x) {
-            visitor.visit_i128(n)
-        } else if let Some(n) = try_float(x) {
-            visitor.visit_f64(n)
-        } else {
-            visitor.visit_str(x)
+            return visitor.visit_bool(false);
+        }
+        // Gate the numeric parse attempts on the first byte: a field can
+        // only parse as a Rust integer or float if it starts with an ASCII
+        // digit, a sign, a decimal point or an inf/NaN prefix. This avoids
+        // up to five failed `parse` calls for ordinary text fields, and the
+        // guaranteed-to-fail positive attempts for negative numbers.
+        match x.as_bytes().first() {
+            Some(b'0'..=b'9') | Some(b'+') => {
+                if let Some(n) = try_positive_integer64(x) {
+                    visitor.visit_u64(n)
+                } else if let Some(n) = try_positive_integer128(x) {
+                    visitor.visit_u128(n)
+                } else if let Some(n) = try_float(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visitor.visit_str(x)
+                }
+            }
+            Some(b'-') => {
+                if let Some(n) = try_negative_integer64(x) {
+                    visitor.visit_i64(n)
+                } else if let Some(n) = try_negative_integer128(x) {
+                    visitor.visit_i128(n)
+                } else if let Some(n) = try_float(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visitor.visit_str(x)
+                }
+            }
+            // f64 parsing accepts inf/infinity/nan case-insensitively.
+            Some(b'.') | Some(b'i') | Some(b'I') | Some(b'n') | Some(b'N') => {
+                if let Some(n) = try_float(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visitor.visit_str(x)
+                }
+            }
+            _ => visitor.visit_str(x),
         }
     }
 }
@@ -292,23 +318,45 @@ impl<'r> DeRecord<'r> for DeByteRecord<'r> {
     ) -> Result<V::Value, DeserializeError> {
         let x = self.next_field_bytes()?;
         if x == b"true" {
-            visitor.visit_bool(true)
+            return visitor.visit_bool(true);
         } else if x == b"false" {
-            visitor.visit_bool(false)
-        } else if let Some(n) = try_positive_integer64_bytes(x) {
-            visitor.visit_u64(n)
-        } else if let Some(n) = try_negative_integer64_bytes(x) {
-            visitor.visit_i64(n)
-        } else if let Some(n) = try_positive_integer128_bytes(x) {
-            visitor.visit_u128(n)
-        } else if let Some(n) = try_negative_integer128_bytes(x) {
-            visitor.visit_i128(n)
-        } else if let Some(n) = try_float_bytes(x) {
-            visitor.visit_f64(n)
-        } else if let Ok(s) = simdutf8::basic::from_utf8(x) {
-            visitor.visit_str(s)
-        } else {
-            visitor.visit_bytes(x)
+            return visitor.visit_bool(false);
+        }
+        // See the comment in the `DeStringRecord` impl: gate the numeric
+        // parse attempts on the first byte so that ordinary text fields
+        // skip the guaranteed-to-fail parses.
+        match x.first() {
+            Some(b'0'..=b'9') | Some(b'+') => {
+                if let Some(n) = try_positive_integer64_bytes(x) {
+                    visitor.visit_u64(n)
+                } else if let Some(n) = try_positive_integer128_bytes(x) {
+                    visitor.visit_u128(n)
+                } else if let Some(n) = try_float_bytes(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visit_str_or_bytes(x, visitor)
+                }
+            }
+            Some(b'-') => {
+                if let Some(n) = try_negative_integer64_bytes(x) {
+                    visitor.visit_i64(n)
+                } else if let Some(n) = try_negative_integer128_bytes(x) {
+                    visitor.visit_i128(n)
+                } else if let Some(n) = try_float_bytes(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visit_str_or_bytes(x, visitor)
+                }
+            }
+            // f64 parsing accepts inf/infinity/nan case-insensitively.
+            Some(b'.') | Some(b'i') | Some(b'I') | Some(b'n') | Some(b'N') => {
+                if let Some(n) = try_float_bytes(x) {
+                    visitor.visit_f64(n)
+                } else {
+                    visit_str_or_bytes(x, visitor)
+                }
+            }
+            _ => visit_str_or_bytes(x, visitor),
         }
     }
 }
@@ -368,22 +416,28 @@ impl<'a, 'de: 'a, T: DeRecord<'de>> Deserializer<'de>
         self,
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        visitor.visit_f32(
-            self.next_field()?
+        let field = self.next_field()?;
+        visitor.visit_f32(match fast_float2::parse(field) {
+            Ok(n) => n,
+            // Fall back to std to produce the exact `ParseFloatError`.
+            Err(_) => field
                 .parse()
                 .map_err(|err| self.error(DEK::ParseFloat(err)))?,
-        )
+        })
     }
 
     fn deserialize_f64<V: Visitor<'de>>(
         self,
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        visitor.visit_f64(
-            self.next_field()?
+        let field = self.next_field()?;
+        visitor.visit_f64(match fast_float2::parse(field) {
+            Ok(n) => n,
+            // Fall back to std to produce the exact `ParseFloatError`.
+            Err(_) => field
                 .parse()
                 .map_err(|err| self.error(DEK::ParseFloat(err)))?,
-        )
+        })
     }
 
     fn deserialize_char<V: Visitor<'de>>(
@@ -731,6 +785,16 @@ impl DeserializeErrorKind {
     }
 }
 
+fn visit_str_or_bytes<'de, V: Visitor<'de>>(
+    x: &[u8],
+    visitor: V,
+) -> Result<V::Value, DeserializeError> {
+    match simdutf8::basic::from_utf8(x) {
+        Ok(s) => visitor.visit_str(s),
+        Err(_) => visitor.visit_bytes(x),
+    }
+}
+
 fn try_positive_integer128(s: &str) -> Option<u128> {
     s.parse().ok()
 }
@@ -748,7 +812,7 @@ fn try_negative_integer64(s: &str) -> Option<i64> {
 }
 
 fn try_float(s: &str) -> Option<f64> {
-    s.parse().ok()
+    fast_float2::parse(s).ok()
 }
 
 fn try_positive_integer64_bytes(s: &[u8]) -> Option<u64> {
@@ -768,7 +832,9 @@ fn try_negative_integer128_bytes(s: &[u8]) -> Option<i128> {
 }
 
 fn try_float_bytes(s: &[u8]) -> Option<f64> {
-    simdutf8::basic::from_utf8(s).ok().and_then(|s| s.parse().ok())
+    // fast-float2 parses directly from bytes; a fully-consumed successful
+    // parse implies the input was ASCII, so the UTF-8 check is unnecessary.
+    fast_float2::parse(s).ok()
 }
 
 #[cfg(test)]
