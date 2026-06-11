@@ -1098,6 +1098,7 @@ const CLASS_SIZE: usize = 256;
 ///
 /// For the most part, this is a transition table, but various optimizations
 /// have been applied to reduce its memory footprint.
+#[derive(Clone)]
 struct Dfa {
     /// The core transition table. Each row corresponds to the
     /// transitions for each input equivalence class. (Input
@@ -1240,6 +1241,7 @@ impl Dfa {
 }
 
 /// A map from input byte to equivalence class.
+#[derive(Clone)]
 struct DfaClasses {
     classes: [u8; CLASS_SIZE],
     next_class: usize,
@@ -1354,24 +1356,6 @@ impl fmt::Debug for DfaClasses {
             "DfaClasses {{ classes: N/A, next_class: {:?} }}",
             self.next_class
         )
-    }
-}
-
-impl Clone for Dfa {
-    fn clone(&self) -> Dfa {
-        let mut dfa = Dfa::new();
-        dfa.trans.copy_from_slice(&self.trans);
-        dfa
-    }
-}
-
-impl Clone for DfaClasses {
-    fn clone(&self) -> DfaClasses {
-        let mut x = DfaClasses::new();
-        x.classes.copy_from_slice(&self.classes);
-        x.special_bytes = self.special_bytes;
-        x.special_count = self.special_count;
-        x
     }
 }
 
@@ -1965,6 +1949,34 @@ mod tests {
 
         assert_read!(rdr, b("\"\"bar\""), out, 6, 4, InputEmpty);
         assert_eq!(&out[..4], b("bar\""));
+    }
+
+    // Test that a cloned reader parses identically to the original. The
+    // DFA used to have a hand-written `Clone` impl that copied only the
+    // transition table, dropping `has_output`, the equivalence classes
+    // and the cached state thresholds, so a cloned reader would advance
+    // without emitting any field bytes.
+    #[test]
+    fn clone_works() {
+        use crate::ReadRecordResult::*;
+
+        let data = b("foo,\"b,ar\"\nbaz,quux\n");
+        let mut rdr1 = ReaderBuilder::new().build();
+        let mut rdr2 = rdr1.clone();
+
+        let out1 = &mut [0; 64];
+        let ends1 = &mut [0; 8];
+        let (res1, nin1, nout1, nend1) = rdr1.read_record(data, out1, ends1);
+
+        let out2 = &mut [0; 64];
+        let ends2 = &mut [0; 8];
+        let (res2, nin2, nout2, nend2) = rdr2.read_record(data, out2, ends2);
+
+        assert_eq!(res1, Record);
+        assert_eq!((res1, nin1, nout1, nend1), (res2, nin2, nout2, nend2));
+        assert_eq!(&out1[..nout1], b("foob,ar"));
+        assert_eq!(out1[..nout1], out2[..nout2]);
+        assert_eq!(ends1[..nend1], ends2[..nend2]);
     }
 
     // Test the line number reporting is correct.
