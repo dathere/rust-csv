@@ -1,7 +1,5 @@
 use core::fmt;
 
-use memchr::{memchr, memchr2, memchr3};
-
 use crate::Terminator;
 
 // BE ADVISED
@@ -1100,19 +1098,6 @@ const CLASS_SIZE: usize = 256;
 ///
 /// For the most part, this is a transition table, but various optimizations
 /// have been applied to reduce its memory footprint.
-/// A combined DFA transition entry storing both the next
-/// state and whether the input byte should be emitted.
-#[derive(Clone, Copy)]
-struct DfaTransition {
-    state: DfaState,
-    has_output: bool,
-}
-
-const _: () = assert!(
-    core::mem::size_of::<DfaTransition>() == 2,
-    "DfaTransition must be exactly 2 bytes"
-);
-
 struct Dfa {
     /// The core transition table. Each row corresponds to the
     /// transitions for each input equivalence class. (Input
@@ -1122,10 +1107,11 @@ struct Dfa {
     /// DFA states are represented as an index corresponding to
     /// the start of its row in this table.
     ///
-    /// Each entry contains both the next state and whether the
-    /// input byte should be emitted, merged into a single
-    /// lookup for cache locality.
-    trans: [DfaTransition; TRANS_SIZE],
+    trans: [DfaState; TRANS_SIZE],
+    /// A table with the same layout as `trans`, except its values indicate
+    /// whether a particular `(state, equivalence class)` pair should emit an
+    /// output byte.
+    has_output: [bool; TRANS_SIZE],
     /// A map from input byte to equivalence class.
     ///
     /// This is responsible for reducing the effective alphabet
@@ -1150,8 +1136,8 @@ struct Dfa {
 impl Dfa {
     const fn new() -> Dfa {
         Dfa {
-            trans: [DfaTransition { state: DfaState(0), has_output: false };
-                TRANS_SIZE],
+            trans: [DfaState(0); TRANS_SIZE],
+            has_output: [false; TRANS_SIZE],
             classes: DfaClasses::new(),
             in_field: DfaState(0),
             in_quoted: DfaState(0),
@@ -1178,8 +1164,7 @@ impl Dfa {
     const fn get_output(&self, state: DfaState, c: u8) -> (DfaState, bool) {
         let cls = self.classes.classes[c as usize];
         let idx = state.0 as usize + cls as usize;
-        let t = self.trans[idx];
-        (t.state, t.has_output)
+        (self.trans[idx], self.has_output[idx])
     }
 
     #[inline]
@@ -1192,7 +1177,8 @@ impl Dfa {
     ) {
         let cls = self.classes.classes[c as usize];
         let idx = from.0 as usize + cls as usize;
-        self.trans[idx] = DfaTransition { state: to, has_output: output };
+        self.trans[idx] = to;
+        self.has_output[idx] = output;
     }
 
     #[inline]
@@ -1298,15 +1284,23 @@ impl DfaClasses {
         self.next_class
     }
 
-    /// Scan and copy input bytes to the output buffer using
-    /// SIMD-accelerated memchr to find the next special byte,
-    /// then bulk-copy via `copy_from_slice`.
+    /// Scan and copy input bytes to the output buffer quickly.
     ///
-    /// This assumes the current DFA state is `InField` or
-    /// `InQuotedField`. All bytes in equivalence class 0
-    /// (not a delimiter/quote/escape/etc.) are guaranteed to
-    /// never cause a state transition, so we can safely skip
-    /// them in bulk.
+    /// This assumes that the current state of the DFA is either `InField` or
+    /// `InQuotedField`. In this case, all bytes corresponding to the first
+    /// equivalence class (i.e., not a delimiter/quote/escape/etc.) are
+    /// guaranteed to never result in a state transition out of the current
+    /// state. This function takes advantage of that copies every byte from
+    /// `input` in the first equivalence class to `output`. Once a byte is seen
+    /// outside the first equivalence class, we quit and should fall back to
+    /// the main DFA loop.
+    ///
+    /// NOTE: An earlier revision of this fork replaced this loop with
+    /// memchr-based SIMD scanning. That was a measured net regression
+    /// (1.5-1.7x slower raw reads on aarch64): the scan runs once per
+    /// field and typical fields are too short to amortize memchr's
+    /// per-call setup, while this byte-wise class-table loop resolves
+    /// them at less than DFA-loop cost. Keep it simple.
     #[inline(always)]
     fn scan_and_copy(
         &self,
@@ -1315,73 +1309,13 @@ impl DfaClasses {
         output: &mut [u8],
         nout: &mut usize,
     ) {
-        let in_left = input.len() - *nin;
-        let out_left = output.len() - *nout;
-        let max_copy = if in_left < out_left { in_left } else { out_left };
-        // Short-input bypass: memchr's SIMD setup cost dominates the scan
-        // itself for tiny remaining segments. Datasets with small fields
-        // (~5-byte NFL columns) hit this path on every iteration. Falling
-        // through lets the outer DFA loop handle the few bytes byte-by-byte,
-        // which is cheaper than entering memchr just to bail out almost
-        // immediately. Threshold chosen to be ≥ memchr's typical SIMD-wide
-        // first compare.
-        if max_copy < 16 {
-            return;
-        }
-        let scan = &input[*nin..*nin + max_copy];
-        // Use memchr to find the first special byte via
-        // SIMD. For typical configs this is 4 bytes
-        // (delimiter, quote, \r, \n) handled with two
-        // memchr calls. We support at most 6 special bytes
-        // (two memchr3 calls). If more are ever added,
-        // this must be updated.
-        debug_assert!(
-            self.special_count <= 6,
-            "scan_and_copy supports at most 6 special bytes, \
-             got {}",
-            self.special_count
-        );
-        let end = match self.special_count {
-            0 => max_copy,
-            1 => {
-                let s = self.special_bytes;
-                memchr(s[0], scan).unwrap_or(max_copy)
-            }
-            2 => {
-                let s = self.special_bytes;
-                memchr2(s[0], s[1], scan).unwrap_or(max_copy)
-            }
-            3 => {
-                let s = self.special_bytes;
-                memchr3(s[0], s[1], s[2], scan).unwrap_or(max_copy)
-            }
-            _ => {
-                let s = self.special_bytes;
-                let a = memchr3(s[0], s[1], s[2], scan);
-                let b = match self.special_count {
-                    4 => memchr(s[3], scan),
-                    5 => memchr2(s[3], s[4], scan),
-                    _ => memchr3(s[3], s[4], s[5], scan),
-                };
-                match (a, b) {
-                    (Some(x), Some(y)) => {
-                        if x < y {
-                            x
-                        } else {
-                            y
-                        }
-                    }
-                    (Some(x), None) => x,
-                    (None, Some(y)) => y,
-                    (None, None) => max_copy,
-                }
-            }
-        };
-        if end > 0 {
-            output[*nout..*nout + end]
-                .copy_from_slice(&input[*nin..*nin + end]);
-            *nin += end;
-            *nout += end;
+        while *nin < input.len()
+            && *nout < output.len()
+            && self.classes[input[*nin] as usize] == 0
+        {
+            output[*nout] = input[*nin];
+            *nin += 1;
+            *nout += 1;
         }
     }
 }
